@@ -7,7 +7,7 @@ rows, columns = 20, 20
 exit_location = (rows - 1, columns // 2)
 
 move_prob = 1  # Probability of attempting to move
-exit_influence = 4  # Probability multiplier for moving towards the exit
+exit_influence = 8  # Probability multiplier for moving towards the exit
 
 # Initialize the grid with people randomly placed (1=person, 0=empty)
 
