@@ -3,11 +3,14 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib import colors
 
-rows, columns = 20, 20
+rows, columns = 200, 200
 exit_location = (rows - 1, columns // 2)
 
 move_prob = 1  # Probability of attempting to move
 exit_influence = 8  # Probability multiplier for moving towards the exit
+
+# List to store the number of people remaining at each frame
+people_remaining_over_time = []
 
 # Initialize the grid with people randomly placed (1=person, 0=empty)
 
@@ -28,7 +31,7 @@ def distance_to_exit(i, j, exit_location):
 # Function to update the grid based on movement probabilities
 
 
-def update(frameNum, img, grid, exit_location):
+def update(frameNum, img, grid, exit_location, num_frames):
     new_grid = grid.copy()
     rows, columns = grid.shape
 
@@ -67,7 +70,32 @@ def update(frameNum, img, grid, exit_location):
     # Update data for the plot
     img.set_data(new_grid)
     grid[:] = new_grid[:]  # Update the original grid
+
+    # Count the number of people left
+    num_people_remaining = np.sum(new_grid == 1)
+    print(f"Frame {frameNum}: {num_people_remaining} people remaining")
+
+    # Store the number of remaining people for plotting later
+    people_remaining_over_time.append(num_people_remaining)
+
+    # Stop the simulation if no people are left
+    if num_people_remaining == 0:
+        print(f"All people have evacuated in {frameNum} frames.")
+        ani.event_source.stop()  # Stop the animation
+
     return img,
+
+# Function to plot people remaining over time after simulation ends
+
+
+def plot_people_remaining():
+    plt.figure()
+    plt.plot(people_remaining_over_time, label="People remaining")
+    plt.xlabel("Frame")
+    plt.ylabel("People Remaining")
+    plt.title("People Remaining in Room Over Time")
+    plt.legend()
+    plt.show()
 
 # Main function to run the cellular automaton
 
@@ -84,10 +112,14 @@ def run_egress_simulation():
     fig, ax = plt.subplots()
     img = ax.imshow(grid, interpolation='nearest', cmap=cmap, norm=norm)
 
-    # Run the animation (slower animation with interval = 500 ms)
-    ani = animation.FuncAnimation(fig, update, fargs=(img, grid, exit_location),
-                                  frames=200, interval=100, save_count=50)
+    # Run the animation (slower animation with interval = 100 ms)
+    global ani
+    ani = animation.FuncAnimation(fig, update, fargs=(img, grid, exit_location, 0),
+                                  frames=900, interval=80, save_count=50)
     plt.show()
+
+    # After the animation stops, plot the remaining people over time
+    plot_people_remaining()
 
 
 # Run the simulation
