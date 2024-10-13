@@ -22,10 +22,9 @@ def initialize_grid(rows, columns, num_people=50):
         grid[pos // columns, pos % columns] = 1
     return grid
 
-# Compute Manhattan distance to the exit
-
 
 def distance_to_exit(i, j, exit_location):
+    '''Compute Manhattan distance to the exit'''
     return abs(i - exit_location[0]) + abs(j - exit_location[1])
 
 # Function to update the grid based on movement probabilities
