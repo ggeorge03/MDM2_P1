@@ -7,7 +7,7 @@ rows, columns = 200, 200
 exit_location = (rows - 1, columns // 2)
 
 move_prob = 1  # Probability of attempting to move
-exit_influence = 20  # Probability multiplier for moving towards the exit
+exit_influence = 800  # Probability multiplier for moving towards the exit
 
 # List to store the number of people remaining at each frame
 people_remaining_over_time = []
@@ -15,7 +15,7 @@ people_remaining_over_time = []
 # Initialize the grid with people randomly placed (1=person, 0=empty)
 
 
-def initialize_grid(rows, columns, num_people=50):
+def initialize_grid(rows, columns, num_people=150):
     grid = np.zeros((rows, columns))
     positions = np.random.choice(rows * columns, num_people, replace=False)
     for pos in positions:
@@ -41,8 +41,8 @@ def update(frameNum, img, grid, exit_location, num_frames):
                 neighbors = []
                 probs = []
 
-                # Check all four neighboring cells (up, down, left, right)
-                for ni, nj in [(i-1, j), (i+1, j), (i, j-1), (i, j+1)]:
+                # Check all four neighboring cells (up, down, left, right) +diagonals
+                for ni, nj in [(i-1, j), (i+1, j), (i, j-1), (i, j+1),(i-1,j-1),(i+1,j-1),(i-1,j+1),(i+1,j+1)]:
                     if 0 <= ni < rows and 0 <= nj < columns and grid[ni, nj] == 0:
                         neighbors.append((ni, nj))
                         dist = distance_to_exit(ni, nj, exit_location)
