@@ -88,3 +88,4 @@ ani = FuncAnimation(fig, update, frames=200, interval=100)
 
 plt.legend()
 plt.show()
+print("code finished ")
