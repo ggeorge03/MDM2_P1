@@ -45,8 +45,8 @@ def plot_density_heatmap():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Plot user movement data.")
-    parser.add_argument('--plot', choices=['trajectories', 'heatmap'], required=True,
-                        help="Specify which plot to create: 'trajectories' or 'heatmap'")
+    parser.add_argument('--plot', choices=['trajectories', 'heatmap'], default='trajectories',
+                    help="Specify which plot to create: 'trajectories' or 'heatmap' (default: 'trajectories')")
     parser.add_argument('--num_users', type=int, default=25,
                         help="Number of users to plot trajectories for (default: 25)")
 
