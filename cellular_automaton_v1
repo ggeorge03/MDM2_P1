@@ -4,7 +4,11 @@ import matplotlib.animation as animation
 from matplotlib import colors
 
 rows, columns = 200, 200
-exit_location = (rows - 1, columns // 2)
+
+# Define a 3-cell wide exit at the top middle of the grid (row 0, middle 3 columns)
+exit_start = columns // 2 - 1  # The first column of the 3-cell wide exit
+exit_location = [(0, exit_start), (0, exit_start + 1),
+                 (0, exit_start + 2)]  # Exit is on row 0
 
 move_prob = 1  # Probability of attempting to move
 exit_influence = 8  # Probability multiplier for moving towards the exit
@@ -24,8 +28,8 @@ def initialize_grid(rows, columns, num_people=50):
 
 
 def distance_to_exit(i, j, exit_location):
-    '''Compute Manhattan distance to the exit'''
-    return abs(i - exit_location[0]) + abs(j - exit_location[1])
+    '''Compute Manhattan distance to the nearest exit cell'''
+    return min([abs(i - ex[0]) + abs(j - ex[1]) for ex in exit_location])
 
 # Function to update the grid based on movement probabilities
 
@@ -63,8 +67,9 @@ def update(frameNum, img, grid, exit_location, num_frames):
                         # Move person to the new cell
                         new_grid[new_location] = 1
 
-    # Set the exit cell to 0 (people leave)
-    new_grid[exit_location] = 0
+    # Set the exit cells to 0 (people leave through any of the 3 exit cells)
+    for ex in exit_location:
+        new_grid[ex] = 0
 
     # Update data for the plot
     img.set_data(new_grid)
