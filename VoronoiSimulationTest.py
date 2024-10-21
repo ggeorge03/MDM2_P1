@@ -21,21 +21,31 @@ def add_jitter(positions, jitter_amount=1e-3):
 
 # Compute Voronoi diagram for the initial positions of people
 def generate_voronoi(positions):
-    # Add jitter to avoid degenerate Voronoi issues
     jittered_positions = add_jitter(positions)
     return Voronoi(jittered_positions)
 
+# Initialize random speeds for each person
+people_speeds = np.random.uniform(0.5, 1.5, size=num_people)  # Random speeds between 0.5 and 1.5
+
+# Initialize egress times to infinity for people still in the room
+egress_times = np.full(num_people, np.inf)
+
 # Function to move people towards the door
-def move_towards_door(people_positions, door_position, speed=1):
+def move_towards_door(people_positions, door_position, people_speeds, frame):
     new_positions = []
-    for pos in people_positions:
+    for i, pos in enumerate(people_positions):
+        if np.isfinite(egress_times[i]):  # Skip if the person has already exited
+            new_positions.append(pos)
+            continue
+
         direction = door_position - pos
         distance = np.linalg.norm(direction)
-        if distance > speed:  # Only move if not at the door
+        if distance > people_speeds[i]:  # Move only if not at the door
             direction = direction / distance  # Normalize direction
-            new_pos = pos + direction * speed
+            new_pos = pos + direction * people_speeds[i]
         else:
-            new_pos = door_position  # If close enough, snap to door
+            new_pos = door_position  # Snap to door if close enough
+            egress_times[i] = frame  # Record the frame at which the person exits
         new_positions.append(new_pos)
     return np.array(new_positions)
 
@@ -70,7 +80,7 @@ def draw_voronoi(vor):
 # Update function for the animation
 def update(frame):
     global people_positions
-    people_positions = move_towards_door(people_positions, door_position, speed=0.5)  # Move people
+    people_positions = move_towards_door(people_positions, door_position, people_speeds, frame)  # Move people with varying speeds
     people_scatter.set_offsets(people_positions)  # Update positions
     
     # Update Voronoi diagram
@@ -88,4 +98,8 @@ ani = FuncAnimation(fig, update, frames=200, interval=100)
 
 plt.legend()
 plt.show()
-print("code finished ")
+
+# Once the animation ends, display the egress times
+print("Egress times (in frames) for each individual:", egress_times)
+
+print("code finished")
