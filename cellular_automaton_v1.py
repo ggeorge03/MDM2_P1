@@ -42,7 +42,7 @@ def update(frameNum, img, grid, exit_location, num_frames):
                 probs = []
 
                 # Check all four neighboring cells (up, down, left, right)
-                for ni, nj in [(i-1, j), (i+1, j), (i, j-1), (i, j+1)]:
+                for ni, nj in [(i-1, j), (i+1, j), (i, j-1), (i, j+1),(i+1,j-1),(i+1,j+1),(i-1,j+1),(i-1,i+1)]t :
                     if 0 <= ni < rows and 0 <= nj < columns and grid[ni, nj] == 0:
                         neighbors.append((ni, nj))
                         dist = distance_to_exit(ni, nj, exit_location)
