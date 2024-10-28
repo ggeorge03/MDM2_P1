@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
+from matplotlib.animation import FuncAnimation
 
 class Agent:
     def __init__(self, position, speed, goal):
@@ -37,41 +37,36 @@ class Room:
         self.height = height
         self.exit_position = np.array(exit_position)
         self.agents = []
+        self.fig, self.ax = plt.subplots(figsize=(8, 6))
+        self.scatter_agents = None
 
     def add_agent(self, agent):
         self.agents.append(agent)
 
     def simulate(self, time_step=0.1, max_time=60):
         times_to_exit = []
-        for t in np.arange(0, max_time, time_step):
-            for agent in self.agents[:]:  # Iterate over a copy of the agents list
-                agent.move(self.agents, time_step)
-                if agent.has_exited():
-                    times_to_exit.append(t)
-                    self.agents.remove(agent)  # Remove agent once it has exited
-
-            # Visualization for debugging or demonstration
-            self.plot_room(t)
-
-            # If all agents have exited, end simulation
-            if len(self.agents) == 0:
-                break
-
+        ani = FuncAnimation(self.fig, self.update_plot, frames=np.arange(0, max_time, time_step), fargs=(time_step, times_to_exit), repeat=False)
+        plt.show()
         return times_to_exit
 
-    def plot_room(self, current_time):
-        plt.figure(figsize=(8, 6))
-        plt.xlim(0, self.width)
-        plt.ylim(0, self.height)
-        plt.scatter(*self.exit_position, color='red', s=100, label='Exit')
-        for agent in self.agents:
-            plt.scatter(*agent.position, color='blue', s=50)
-        plt.title(f'Egress Simulation at Time = {current_time:.1f} seconds')
-        plt.xlabel('Room Width')
-        plt.ylabel('Room Height')
-        plt.legend()
-        plt.show()
+    def update_plot(self, current_time, time_step, times_to_exit):
+        for agent in self.agents[:]:  # Iterate over a copy of the agents list
+            agent.move(self.agents, time_step)
+            if agent.has_exited():
+                times_to_exit.append(current_time)
+                self.agents.remove(agent)  # Remove agent once it has exited
 
+        self.ax.clear()  # Clear the previous plot
+        self.ax.set_xlim(0, self.width)
+        self.ax.set_ylim(0, self.height)
+        self.ax.scatter(*self.exit_position, color='red', s=100, label='Exit')
+        agent_positions = np.array([agent.position for agent in self.agents])
+        if len(agent_positions) > 0:
+            self.ax.scatter(agent_positions[:, 0], agent_positions[:, 1], color='blue', s=50)
+        self.ax.set_title(f'Egress Simulation at Time = {current_time:.1f} seconds')
+        self.ax.set_xlabel('Room Width')
+        self.ax.set_ylabel('Room Height')
+        self.ax.legend()
 
 # Setting up the simulation
 room_width = 10
