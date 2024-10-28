@@ -7,7 +7,7 @@ rows, columns = 200, 200
 exit_location = (rows - 1, columns // 2)
 
 move_prob = 1  # Probability of attempting to move
-exit_influence = 80  # Probability multiplier for moving towards the exit
+exit_influence = 8  # Probability multiplier for moving towards the exit
 
 # List to store the number of people remaining at each frame
 people_remaining_over_time = []
