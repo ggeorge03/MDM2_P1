@@ -20,8 +20,15 @@ def initialize_grid(rows, columns, num_people=75):
         grid[pos // columns, pos % columns] = 1
     return grid
 
-def initialize_floor_field(rows, columns):
-    return np.zeros((rows, columns))
+def initialize_floor_field(rows, columns, exit_location=exit_location):
+    floor_field = np.zeros((rows, columns))
+    for i in range(rows):
+        for j in range(columns):
+            # Set the floor field value inversely proportional to distance to exit
+            floor_field[i, j] = distance_to_exit(i, j, exit_location)
+    floor_field = np.max(floor_field) - floor_field  # Invert values for visualization (higher values near exit)
+    return floor_field
+
 
 def distance_to_exit(i, j, exit_location):
     '''Compute Manhattan distance to the exit'''
@@ -85,8 +92,9 @@ def update(frameNum, img1, img2, grid, exit_location, floor_field):
 
     return img1, img2  # Ensure both images are updated
 
-def update_floor_field(floor_field, decay_rate=0.01):
-    floor_field *= (1 - decay_rate)  # Decay existing floor field values
+def update_floor_field(floor_field, decay_rate=0.03):
+    floor_field *= (1 - decay_rate)
+  # Decay existing floor field values
     return floor_field
 
 # Function to plot people remaining over time after simulation ends
@@ -108,7 +116,7 @@ def run_egress_simulation():
     cmap = colors.ListedColormap(['black', 'red'])
     bounds = [-0.5, 0.5, 1.5]
     norm = colors.BoundaryNorm(bounds, cmap.N)
-    cmap_floor = plt.cm.Blues
+    cmap_floor = plt.cm.coolwarm
 
     # Set up the plot
     fig, ax = plt.subplots()
