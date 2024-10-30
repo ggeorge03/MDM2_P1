@@ -13,7 +13,7 @@ exit_influence = 8  # Probability multiplier for moving towards the exit
 people_remaining_over_time = []
 
 # Initialize the grid with people randomly placed (1=person, 0=empty)
-def initialize_grid(rows, columns, num_people=75):
+def initialize_grid(rows, columns, num_people=170):
     grid = np.zeros((rows, columns))
     positions = np.random.choice(rows * columns, num_people, replace=False)
     for pos in positions:
