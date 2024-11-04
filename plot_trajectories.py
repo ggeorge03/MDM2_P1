@@ -33,8 +33,8 @@ def plot_density_heatmap():
     of footfall in an area.
     '''
     plt.figure(figsize=(8, 6))
-    # sns.kdeplot(x=df['x'], y=df['y'], cmap='Reds', fill=True, bw_adjust=0.5)
-    plt.hist2d(df['x'], df['y'], bins=200, cmap='Reds') #Quicker way to execute then seaborn takes a second compared to a few minutes 
+    sns.kdeplot(x=df['x'], y=df['y'], cmap='Reds', fill=True, bw_adjust=0.5)
+    # plt.hist2d(df['x'], df['y'], bins=200, cmap='Reds') #Quicker way to execute then seaborn takes a second compared to a few minutes
     plt.colorbar(label='Density')
     plt.xlabel('X position')
     plt.ylabel('Y position')
