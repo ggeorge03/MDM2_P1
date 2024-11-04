@@ -33,8 +33,7 @@ def plot_density_heatmap():
     of footfall in an area.
     '''
     plt.figure(figsize=(8, 6))
-    sns.kdeplot(x=df['x'], y=df['y'], cmap='Reds', fill=True, bw_adjust=0.5)
-    # plt.hist2d(df['x'], df['y'], bins=200, cmap='Reds') #Quicker way to execute then seaborn takes a second compared to a few minutes
+    plt.hist2d(df['x'], df['y'], bins=200, cmap='Reds')  # Faster execution than seaborn's kdeplot
     plt.colorbar(label='Density')
     plt.xlabel('X position')
     plt.ylabel('Y position')
@@ -43,10 +42,36 @@ def plot_density_heatmap():
     # plt.savefig('heatmap.png')
 
 
+def plot_users_left_over_time():
+    '''
+    Function that plots the cumulative number of users
+    who have left the room at each timestamp.
+    '''
+    # Find the last timestamp for each user
+    last_timestamps = df.groupby('userid')['timestamp'].max()
+
+    # Get unique timestamps and sort them
+    unique_timestamps = sorted(df['timestamp'].unique())
+
+    # Create a Series to store cumulative counts of users who left at each timestamp
+    left_counts = pd.Series(0, index=unique_timestamps)
+    for timestamp in unique_timestamps:
+        left_counts[timestamp] = (last_timestamps <= timestamp).sum()
+
+    plt.figure(figsize=(10, 5))
+    plt.plot(left_counts.index, left_counts.values, color='red', lw=2)
+    plt.xlabel('Timestamp')
+    plt.ylabel('Number of Users Who Left')
+    plt.title('Cumulative Number of Users Who Left Over Time')
+    plt.grid()
+    plt.show()
+    # plt.savefig('users_left_over_time.png')
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Plot user movement data.")
-    parser.add_argument('--plot', choices=['trajectories', 'heatmap'], default='trajectories',
-                    help="Specify which plot to create: 'trajectories' or 'heatmap' (default: 'trajectories')")
+    parser.add_argument('--plot', choices=['trajectories', 'heatmap', 'left'], default='trajectories',
+                        help="Specify which plot to create: 'trajectories', 'heatmap', or 'left' (default: 'trajectories')")
     parser.add_argument('--num_users', type=int, default=25,
                         help="Number of users to plot trajectories for (default: 25)")
 
@@ -56,3 +81,10 @@ if __name__ == "__main__":
         plot_trajectories(args.num_users)
     elif args.plot == 'heatmap':
         plot_density_heatmap()
+    elif args.plot == 'left':
+        plot_users_left_over_time()
+
+
+
+
+

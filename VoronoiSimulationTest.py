@@ -21,22 +21,49 @@ def add_jitter(positions, jitter_amount=1e-3):
 
 # Compute Voronoi diagram for the initial positions of people
 def generate_voronoi(positions):
-    # Add jitter to avoid degenerate Voronoi issues
     jittered_positions = add_jitter(positions)
     return Voronoi(jittered_positions)
 
+# Initialize random speeds for each person
+people_speeds = np.random.uniform(0.5, 1.5, size=num_people)
+
+# Initialize egress times to infinity for people still in the room
+egress_times = np.full(num_people, np.inf)
+
+# Total egress time variable
+total_egress_time = None
+
+# Animation interval (100 ms = 0.1 seconds per frame)
+frame_interval_ms = 100
+frame_interval_s = frame_interval_ms / 1000
+
 # Function to move people towards the door
-def move_towards_door(people_positions, door_position, speed=1):
+def move_towards_door(people_positions, door_position, people_speeds, frame):
     new_positions = []
-    for pos in people_positions:
+    for i, pos in enumerate(people_positions):
+        if np.isfinite(egress_times[i]):
+            new_positions.append(pos)
+            continue
+
         direction = door_position - pos
         distance = np.linalg.norm(direction)
-        if distance > speed:  # Only move if not at the door
-            direction = direction / distance  # Normalize direction
-            new_pos = pos + direction * speed
+
+        speed = people_speeds[i]
+        
+        if distance < 10:
+            nearby_people = np.linalg.norm(people_positions - door_position, axis=1) < 15
+            congestion_factor = 1.0 / np.sum(nearby_people)
+            speed = max(0.3, speed * congestion_factor)
+        
+        randomness = np.random.uniform(-0.1, 0.1, size=2)
+        if distance > speed:
+            direction = direction / distance
+            new_pos = pos + (direction + randomness) * speed
         else:
-            new_pos = door_position  # If close enough, snap to door
+            new_pos = door_position
+            egress_times[i] = frame
         new_positions.append(new_pos)
+
     return np.array(new_positions)
 
 # Initialize plot
@@ -44,6 +71,9 @@ fig, ax = plt.subplots()
 ax.set_xlim(0, room_size[0])
 ax.set_ylim(0, room_size[1])
 ax.set_aspect('equal')
+
+# Set background color for better contrast
+ax.set_facecolor('lightgray')  # Change background color to light gray
 
 # Plot the door as a red point
 door_scatter = ax.scatter(door_position[0], door_position[1], color='red', s=100, label='Door')
@@ -58,20 +88,23 @@ def draw_voronoi(vor):
     global voronoi_polygons
     # Remove previous polygons
     for poly in voronoi_polygons:
-        poly.remove()  # Correctly remove each polygon
+        poly.remove()
     voronoi_polygons = []
     
-    # Plot new Voronoi regions
+    # Plot new Voronoi regions with filled colors only
     for region in vor.regions:
-        if not -1 in region and len(region) > 0:  # Filter out incomplete regions
+        if not -1 in region and len(region) > 0:
             polygon = [vor.vertices[i] for i in region]
-            voronoi_polygons.append(ax.fill(*zip(*polygon), alpha=0.2)[0])  # Store the actual Polygon object
+            color = np.random.rand(3,)  # Random color for each polygon
+            poly = ax.fill(*zip(*polygon), color=color, alpha=0.5)  # Fill with transparency
+            voronoi_polygons.append(poly[0])  # Store the actual Polygon object
 
 # Update function for the animation
 def update(frame):
-    global people_positions
-    people_positions = move_towards_door(people_positions, door_position, speed=0.5)  # Move people
-    people_scatter.set_offsets(people_positions)  # Update positions
+    global people_positions, total_egress_time
+
+    people_positions = move_towards_door(people_positions, door_position, people_speeds, frame)
+    people_scatter.set_offsets(people_positions)
     
     # Update Voronoi diagram
     try:
@@ -79,13 +112,32 @@ def update(frame):
         draw_voronoi(vor)
     except Exception as e:
         print(f"Voronoi failed at frame {frame}: {e}")
-        # Skip this frame in case of failure to keep the animation running
+
+    # Check if all people have exited the room
+    if np.all(np.isfinite(egress_times)) and total_egress_time is None:
+        total_egress_time = frame
+
+    # Stop the animation when all people have exited
+    if total_egress_time is not None:
+        total_time_seconds = total_egress_time * frame_interval_s
+        total_time_minutes = total_time_seconds / 60
+        print(f"Total egress time: {total_egress_time} frames ({total_time_seconds:.2f} seconds or {total_time_minutes:.2f} minutes)")
+        ani.event_source.stop()
 
     return people_scatter,
 
 # Animation function
-ani = FuncAnimation(fig, update, frames=200, interval=100)
+ani = FuncAnimation(fig, update, frames=200, interval=frame_interval_ms)
 
 plt.legend()
 plt.show()
+
+# Once the animation ends, display the total egress time
+if total_egress_time is not None:
+    total_time_seconds = total_egress_time * frame_interval_s
+    total_time_minutes = total_time_seconds / 60
+    print(f"All people exited in {total_egress_time} frames, which is {total_time_seconds:.2f} seconds or {total_time_minutes:.2f} minutes.")
+else:
+    print("Some people did not exit within the animation frames.")
+
 print("code finished ")
