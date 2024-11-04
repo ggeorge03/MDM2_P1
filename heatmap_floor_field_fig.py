@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 grid_size = (200, 200)  # Dimensions
-exit_position = (0, 100)  # Exit at top middle
+exit_position = (0, 100)  # Exit at top middle.
 
 # Initialize floor field matrix to store distances
 distance_field = np.zeros(grid_size)
