@@ -84,7 +84,6 @@ def plot_users_remaining_over_time():
     plt.show()
     # plt.savefig('users_remaining_over_time.png')
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Plot user movement data.")
     parser.add_argument('--plot', choices=['trajectories', 'heatmap', 'left'], default='trajectories',
@@ -99,7 +98,7 @@ if __name__ == "__main__":
     elif args.plot == 'heatmap':
         plot_density_heatmap()
     elif args.plot == 'left':
-        plot_users_left_over_time()
+        plot_users_remaining_over_time()
 
 
 
