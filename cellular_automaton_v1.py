@@ -144,7 +144,7 @@ def run_egress_simulation():
     grid = initialize_grid(rows, columns)
     floor_field = initialize_floor_field(rows, columns)
 
-    # Define a colormap: empty cells = white, people = black
+    # Define a colormap: empty cells = white, people = red , obstacles red
     cmap = colors.ListedColormap(['white', 'blue','gray'])
     bounds = [-1, 0, 1,2]
     norm = colors.BoundaryNorm(bounds, cmap.N)
