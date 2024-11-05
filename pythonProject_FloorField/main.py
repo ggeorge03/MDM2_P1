@@ -11,7 +11,7 @@ df = pd.read_csv('data.txt', sep=' ', header=None,
 def plot_trajectories(num_users=25):  # Specify amount of trajectories to plot.
     '''
     Function that plots the x-y trajectories of a
-    specified number of people from from dataset.
+    specified number of people from the dataset.
     '''
     user_ids = df['userid'].unique()[:num_users]
     for user_id in user_ids:
@@ -53,13 +53,24 @@ def plot_users_left_over_time():
     # Get unique timestamps and sort them
     unique_timestamps = sorted(df['timestamp'].unique())
 
-    # Create a Series to store cumulative counts of users who left at each timestamp
-    left_counts = pd.Series(0, index=unique_timestamps)
-    for timestamp in unique_timestamps:
-        left_counts[timestamp] = (last_timestamps <= timestamp).sum()
+    # Initialize list to store the cumulative count of users left at each timestamp
+    left_counts = []
 
+    # Track cumulative number of people who have left
+    cumulative_left_count = 0
+
+    # Iterate through each unique timestamp in ascending order
+    for timestamp in unique_timestamps:
+        # Count users whose last recorded timestamp matches the current timestamp
+        num_leaving_now = (last_timestamps == timestamp).sum()
+
+        # Update the cumulative count with users leaving at this timestamp
+        cumulative_left_count += num_leaving_now
+        left_counts.append(cumulative_left_count)
+
+    # Plotting
     plt.figure(figsize=(10, 5))
-    plt.plot(left_counts.index, left_counts.values, color='red', lw=2)
+    plt.plot(unique_timestamps, left_counts, color='red', lw=2)
     plt.xlabel('Timestamp')
     plt.ylabel('Number of Users Who Left')
     plt.title('Cumulative Number of Users Who Left Over Time')
@@ -83,6 +94,7 @@ if __name__ == "__main__":
         plot_density_heatmap()
     elif args.plot == 'left':
         plot_users_left_over_time()
+
 
 
 
