@@ -42,41 +42,47 @@ def plot_density_heatmap():
     # plt.savefig('heatmap.png')
 
 
-def plot_users_left_over_time():
+def plot_users_remaining_over_time():
     '''
-    Function that plots the cumulative number of users
-    who have left the room at each timestamp.
+    Function that plots the number of users remaining
+    in the room at each timestamp.
     '''
-    # Find the last timestamp for each user
+    # Find the last timestamp for each user (exit time)
     last_timestamps = df.groupby('userid')['timestamp'].max()
 
     # Get unique timestamps and sort them
     unique_timestamps = sorted(df['timestamp'].unique())
 
-    # Initialize list to store the cumulative count of users left at each timestamp
-    left_counts = []
+    # Total number of unique users in the dataset
+    total_users = df['userid'].nunique()
 
-    # Track cumulative number of people who have left
+    # Initialize a list to store the count of users left in the room at each timestamp
+    users_remaining = []
+
+    # Track cumulative count of users who have left
     cumulative_left_count = 0
 
-    # Iterate through each unique timestamp in ascending order
+    # Calculate the number of people left in the room at each timestamp
     for timestamp in unique_timestamps:
-        # Count users whose last recorded timestamp matches the current timestamp
+        # Count users whose last timestamp (exit time) is at or before the current timestamp
         num_leaving_now = (last_timestamps == timestamp).sum()
 
-        # Update the cumulative count with users leaving at this timestamp
+        # Update the cumulative count of users who have left
         cumulative_left_count += num_leaving_now
-        left_counts.append(cumulative_left_count)
+
+        # Calculate the number of users remaining in the room
+        users_in_room = total_users - cumulative_left_count
+        users_remaining.append(users_in_room)
 
     # Plotting
     plt.figure(figsize=(10, 5))
-    plt.plot(unique_timestamps, left_counts, color='red', lw=2)
+    plt.plot(unique_timestamps, users_remaining, color='blue', lw=2)
     plt.xlabel('Timestamp')
-    plt.ylabel('Number of Users Who Left')
-    plt.title('Cumulative Number of Users Who Left Over Time')
+    plt.ylabel('Number of Users Remaining')
+    plt.title('Number of Users Remaining in Room Over Time')
     plt.grid()
     plt.show()
-    # plt.savefig('users_left_over_time.png')
+    # plt.savefig('users_remaining_over_time.png')
 
 
 if __name__ == "__main__":
