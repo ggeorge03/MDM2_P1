@@ -1,5 +1,4 @@
 import argparse
-import seaborn as sns
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -7,8 +6,12 @@ import matplotlib.pyplot as plt
 df = pd.read_csv('data.txt', sep=' ', header=None,
                  names=['userid', 'timestamp', 'x', 'y'])
 
+# Check the total unique users in the dataset
+unique_user_ids = df['userid'].nunique()
+print(f"Total unique users in dataset: {unique_user_ids}")
 
-def plot_trajectories(num_users=25):  # Specify amount of trajectories to plot.
+
+def plot_trajectories(num_users=25):
     '''
     Function that plots the x-y trajectories of a
     specified number of people from the dataset.
@@ -33,7 +36,7 @@ def plot_density_heatmap():
     of footfall in an area.
     '''
     plt.figure(figsize=(8, 6))
-    plt.hist2d(df['x'], df['y'], bins=200, cmap='Reds')  # Faster execution than seaborn's kdeplot
+    plt.hist2d(df['x'], df['y'], bins=200, cmap='Reds')
     plt.colorbar(label='Density')
     plt.xlabel('X position')
     plt.ylabel('Y position')
@@ -47,14 +50,17 @@ def plot_users_remaining_over_time():
     Function that plots the number of users remaining
     in the room at each timestamp.
     '''
-    # Ensure userid represents unique users by taking only distinct ids
+    # Find the last timestamp for each user (exit time)
     last_timestamps = df.groupby('userid')['timestamp'].max()
 
     # Get unique timestamps and sort them
     unique_timestamps = sorted(df['timestamp'].unique())
 
     # Total number of unique users in the dataset
-    total_users = last_timestamps.size  # Correct unique count of users
+    total_users = last_timestamps.size  # This counts unique users correctly
+
+    # Print to check total users
+    print(f"Total users at the beginning: {total_users}")
 
     # Initialize a list to store the count of users left in the room at each timestamp
     users_remaining = []
@@ -65,10 +71,13 @@ def plot_users_remaining_over_time():
     # Calculate the number of people left in the room at each timestamp
     for timestamp in unique_timestamps:
         # Count users whose last timestamp (exit time) is at or before the current timestamp
-        num_leaving_now = (last_timestamps == timestamp).sum()
+        num_leaving_now = (last_timestamps <= timestamp).sum()
+
+        # Print debug information
+        print(f"Timestamp: {timestamp}, Users leaving: {num_leaving_now}, Cumulative left: {cumulative_left_count}")
 
         # Update the cumulative count of users who have left
-        cumulative_left_count += num_leaving_now
+        cumulative_left_count = num_leaving_now  # Update to count total leaving up to this timestamp
 
         # Calculate the number of users remaining in the room
         users_in_room = total_users - cumulative_left_count
