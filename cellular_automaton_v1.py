@@ -3,29 +3,62 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib import colors
 
-rows, columns = 200, 200
-exit_location = (rows - 1, columns // 2)
+rows, columns = 200, 160
+rect_height, rect_width = 120, 160  # Height and width of the main area
+path_length, path_width = 80,32 # Path width and length leading to exit
 
+# Define a 3-cell wide exit at the top middle of the grid (row 0, middle 3 columns)
+exit_start = columns // 2 - 1  # The first column of the 3-cell wide exit
+exit_location = [(0, exit_start), (0, exit_start + 1),
+                 (0, exit_start + 2)]  # Exit is on row 0
+recording_start=columns // 2 - 1
+recording_location = [(path_length, recording_start), (path_length, exit_start + 1),
+                 (path_length, exit_start + 2)]
 move_prob = 1  # Probability of attempting to move
-exit_influence = 80  # Probability multiplier for moving towards the exit
+exit_influence = 16  # Probability multiplier for moving towards the exit
 
 # List to store the number of people remaining at each frame
 people_remaining_over_time = []
 
 # Initialize the grid with people randomly placed (1=person, 0=empty)
-def initialize_grid(rows, columns, num_people=75):
-    grid = np.zeros((rows, columns))
-    positions = np.random.choice(rows * columns, num_people, replace=False)
+def initialize_grid(rows, columns, num_people=8000): #8000 is max
+    grid = np.full((rows, columns),-1)
+     # Define the central rectangle where people can move (adjust as needed)
+
+    
+    # Position of the main area
+    rect_start_row = rows -rect_height
+    rect_start_col = (columns - rect_width) // 2
+
+    # Set the main rectangular area to be free space
+    grid[rect_start_row:rect_start_row + rect_height, rect_start_col:rect_start_col + rect_width] = 0
+    
+    # Set the pathway leading to the exit to be free space
+    path_start_row = rect_start_row - path_length
+    path_start_col = (columns - path_width) // 2
+    grid[path_start_row:path_start_row + path_length, path_start_col:path_start_col + path_width] = 0
+
+    # Place people randomly within the free area (not in obstacles)
+    free_positions = np.argwhere((grid == 0)& (np.arange(rows)[:, None] >= 150)) #this makes them spawn higher than the pathway they start in a pen of sorts
+    positions = free_positions[np.random.choice(len(free_positions), num_people, replace=False)]
     for pos in positions:
-        grid[pos // columns, pos % columns] = 1
+        grid[pos[0], pos[1]] = 1  # Place people in free cells
     return grid
 
-def initialize_floor_field(rows, columns):
-    return np.zeros((rows, columns))
+def initialize_floor_field(rows, columns, exit_location=exit_location,alpha=0.0001):
+    floor_field = np.zeros((rows, columns))
+    for i in range(rows):
+        for j in range(columns):
+            # Set the floor field value inversely proportional to distance to exit
+            distance = distance_to_exit(i, j, exit_location)
+            floor_field[i, j] = np.exp(-alpha * distance)
+    floor_field = np.max(floor_field) - floor_field  # Invert values for visualization (higher values near exit)
+    return floor_field
+
 
 def distance_to_exit(i, j, exit_location):
-    '''Compute Manhattan distance to the exit'''
-    return abs(i - exit_location[0]) + abs(j - exit_location[1])
+    '''Compute Manhattan distance to the nearest exit cell'''
+    return min([abs(i - ex[0]) + abs(j - ex[1]) for ex in exit_location])
 
 # Function to update the grid based on movement probabilities
 def update(frameNum, img1, img2, grid, exit_location, floor_field):
@@ -39,7 +72,6 @@ def update(frameNum, img1, img2, grid, exit_location, floor_field):
             if grid[i, j] == 1:  # If there's a person in the current cell
                 neighbors = []
                 probs = []
-
                 # Check all neighboring cells (including diagonals)
                 for ni, nj in [(i-1, j), (i+1, j), (i, j-1), (i, j+1),
                                (i-1, j-1), (i-1, j+1), (i+1, j-1), (i+1, j+1)]:
@@ -53,6 +85,7 @@ def update(frameNum, img1, img2, grid, exit_location, floor_field):
                                      distance_to_exit(i, j, exit_location) else base_prob)
 
                 # Normalize probabilities
+                random_move_prob = 0.1
                 if neighbors:
                     probs = np.array(probs)
                     probs /= probs.sum()  # Normalize to sum to 1
@@ -63,20 +96,21 @@ def update(frameNum, img1, img2, grid, exit_location, floor_field):
                         new_grid[new_location] = 1  # Move person to the new cell
                         floor_field[new_location] += 1  # Increase floor field value at the new location
 
-    # Set the exit cell to 0 (people leave)
-    new_grid[exit_location] = 0
+    # Set the exit cells to 0 (people leave through any of the 3 exit cells)
+    for ex in exit_location:
+        new_grid[ex] = 0
 
     # Update the people grid in img1
     img1.set_data(new_grid)
     
     # Update the floor field display in img2 (apply transparency to overlay)
     img2.set_data(floor_field)
-    img2.set_clim(vmin=0, vmax=np.max(floor_field))
+    img2.set_clim(vmin=0, vmax=np.percentile(floor_field, 95))
     
     grid[:] = new_grid[:]  # Update the original grid
 
     # Count the number of people left
-    num_people_remaining = np.sum(new_grid == 1)
+    num_people_remaining = np.sum(new_grid[80:, :] == 1)
     people_remaining_over_time.append(num_people_remaining)
     # Stop the simulation if no people are left
     if num_people_remaining == 0:
@@ -85,8 +119,9 @@ def update(frameNum, img1, img2, grid, exit_location, floor_field):
 
     return img1, img2  # Ensure both images are updated
 
-def update_floor_field(floor_field, decay_rate=0.01):
-    floor_field *= (1 - decay_rate)  # Decay existing floor field values
+def update_floor_field(floor_field, decay_rate=0.001):
+    floor_field *= (1 - decay_rate)
+  # Decay existing floor field values
     return floor_field
 
 # Function to plot people remaining over time after simulation ends
@@ -105,10 +140,10 @@ def run_egress_simulation():
     floor_field = initialize_floor_field(rows, columns)
 
     # Define a colormap: empty cells = white, people = black
-    cmap = colors.ListedColormap(['black', 'red'])
-    bounds = [-0.5, 0.5, 1.5]
+    cmap = colors.ListedColormap(['white', 'blue','gray'])
+    bounds = [-1, 0, 1,2]
     norm = colors.BoundaryNorm(bounds, cmap.N)
-    cmap_floor = plt.cm.Blues
+    cmap_floor = plt.cm.inferno
 
     # Set up the plot
     fig, ax = plt.subplots()
@@ -118,6 +153,7 @@ def run_egress_simulation():
 
     # Set the background color to black
     # ax.set_facecolor('black')
+    ax.invert_yaxis()
 
     # Run the animation (slower animation with interval = 80 ms)
     global ani
