@@ -11,7 +11,7 @@ exit_location = [(0, exit_start), (0, exit_start + 1),
                  (0, exit_start + 2)]  # Exit is on row 0
 
 move_prob = 1  # Probability of attempting to move
-exit_influence = 8  # Probability multiplier for moving towards the exit
+exit_influence = 16  # Probability multiplier for moving towards the exit
 
 # List to store the number of people remaining at each frame
 people_remaining_over_time = []
@@ -24,12 +24,13 @@ def initialize_grid(rows, columns, num_people=170):
         grid[pos // columns, pos % columns] = 1
     return grid
 
-def initialize_floor_field(rows, columns, exit_location=exit_location):
+def initialize_floor_field(rows, columns, exit_location=exit_location,alpha=0.1):
     floor_field = np.zeros((rows, columns))
     for i in range(rows):
         for j in range(columns):
             # Set the floor field value inversely proportional to distance to exit
-            floor_field[i, j] = distance_to_exit(i, j, exit_location)
+            distance = distance_to_exit(i, j, exit_location)
+            floor_field[i, j] = np.exp(-alpha * distance)
     floor_field = np.max(floor_field) - floor_field  # Invert values for visualization (higher values near exit)
     return floor_field
 
@@ -82,7 +83,7 @@ def update(frameNum, img1, img2, grid, exit_location, floor_field):
     
     # Update the floor field display in img2 (apply transparency to overlay)
     img2.set_data(floor_field)
-    img2.set_clim(vmin=0, vmax=np.max(floor_field))
+    img2.set_clim(vmin=0, vmax=np.percentile(floor_field, 95))
     
     grid[:] = new_grid[:]  # Update the original grid
 
@@ -120,7 +121,7 @@ def run_egress_simulation():
     cmap = colors.ListedColormap(['black', 'red'])
     bounds = [-0.5, 0.5, 1.5]
     norm = colors.BoundaryNorm(bounds, cmap.N)
-    cmap_floor = plt.cm.coolwarm
+    cmap_floor = plt.cm.inferno
 
     # Set up the plot
     fig, ax = plt.subplots()
@@ -130,6 +131,7 @@ def run_egress_simulation():
 
     # Set the background color to black
     # ax.set_facecolor('black')
+    ax.invert_yaxis()
 
     # Run the animation (slower animation with interval = 80 ms)
     global ani
