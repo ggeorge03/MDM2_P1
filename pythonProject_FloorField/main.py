@@ -47,14 +47,14 @@ def plot_users_remaining_over_time():
     Function that plots the number of users remaining
     in the room at each timestamp.
     '''
-    # Find the last timestamp for each user (exit time)
+    # Ensure userid represents unique users by taking only distinct ids
     last_timestamps = df.groupby('userid')['timestamp'].max()
 
     # Get unique timestamps and sort them
     unique_timestamps = sorted(df['timestamp'].unique())
 
     # Total number of unique users in the dataset
-    total_users = df['userid'].nunique()
+    total_users = last_timestamps.size  # Correct unique count of users
 
     # Initialize a list to store the count of users left in the room at each timestamp
     users_remaining = []
@@ -83,6 +83,7 @@ def plot_users_remaining_over_time():
     plt.grid()
     plt.show()
     # plt.savefig('users_remaining_over_time.png')
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Plot user movement data.")
