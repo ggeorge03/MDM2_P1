@@ -7,13 +7,16 @@ rows, columns = 200, 160
 rect_height, rect_width = 120, 160  # Height and width of the main area
 path_length, path_width = 80,32 # Path width and length leading to exit
 
-# Define a 3-cell wide exit at the top middle of the grid (row 0, middle 3 columns)
-exit_start = columns // 2 - 1  # The first column of the 3-cell wide exit
-exit_location = [(0, exit_start), (0, exit_start + 1),
-                 (0, exit_start + 2)]  # Exit is on row 0
-recording_start=columns // 2 - 1
-recording_location = [(path_length, recording_start), (path_length, exit_start + 1),
-                 (path_length, exit_start + 2)]
+exit_start = int(columns // 2 - path_width // 2)  # Calculate start of exit area
+exit_end = int(columns // 2 + path_width // 2)    # Calculate end of exit area
+
+# Create a list of coordinates for the exit cells
+exit_location = [(0, col) for col in range(exit_start, exit_end)]
+
+# recording_start=columns // 2 - 1
+# recording_location = [(path_length, recording_start), (path_length, exit_start + 1),
+#                  (path_length, exit_start + 2)]
+
 move_prob = 1  # Probability of attempting to move
 exit_influence = 16  # Probability multiplier for moving towards the exit
 
@@ -85,16 +88,18 @@ def update(frameNum, img1, img2, grid, exit_location, floor_field):
                                      distance_to_exit(i, j, exit_location) else base_prob)
 
                 # Normalize probabilities
-                random_move_prob = 0.1
+                random_move_prob = 0.1 #optional to add jitterness
                 if neighbors:
                     probs = np.array(probs)
                     probs /= probs.sum()  # Normalize to sum to 1
                     # Move to a neighbor based on probability
-                    if np.random.rand() < move_prob:  # Randomly decide if the person tries to move
+                    if np.random.rand() < random_move_prob:  # Randomly decide if the person tries to move
+                        new_location = neighbors[np.random.choice(len(neighbors))]
+                    else:
                         new_location = neighbors[np.random.choice(len(neighbors), p=probs)]
-                        new_grid[i, j] = 0  # Current cell becomes empty
-                        new_grid[new_location] = 1  # Move person to the new cell
-                        floor_field[new_location] += 1  # Increase floor field value at the new location
+                    new_grid[i, j] = 0  # Current cell becomes empty
+                    new_grid[new_location] = 1  # Move person to the new cell
+                    floor_field[new_location] += 1  # Increase floor field value at the new location (can alternare between 0 and 1)
 
     # Set the exit cells to 0 (people leave through any of the 3 exit cells)
     for ex in exit_location:
