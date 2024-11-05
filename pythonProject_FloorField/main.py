@@ -53,16 +53,18 @@ def plot_users_left_over_time():
     # Get unique timestamps and sort them
     unique_timestamps = sorted(df['timestamp'].unique())
 
-    # Initialize cumulative count and list to store counts over time
-    cumulative_left_count = 0
+    # Initialize list to store the cumulative count of users left at each timestamp
     left_counts = []
 
-    # Calculate the cumulative number of people who left by each timestamp
+    # Track cumulative number of people who have left
+    cumulative_left_count = 0
+
+    # Iterate through each unique timestamp in ascending order
     for timestamp in unique_timestamps:
-        # Count users whose last timestamp matches the current timestamp
+        # Count users whose last recorded timestamp matches the current timestamp
         num_leaving_now = (last_timestamps == timestamp).sum()
 
-        # Add this number to the cumulative count
+        # Update the cumulative count with users leaving at this timestamp
         cumulative_left_count += num_leaving_now
         left_counts.append(cumulative_left_count)
 
