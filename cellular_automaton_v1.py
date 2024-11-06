@@ -125,7 +125,7 @@ def update(frameNum, img1, img2, grid, exit_location, floor_field):
     return img1, img2  # Ensure both images are updated
 
 def update_floor_field(floor_field, decay_rate=0.001):
-    floor_field *= (1 - decay_rate)
+    floor_field *= (1 - decay_rate) #delta
   # Decay existing floor field values
     return floor_field
 
