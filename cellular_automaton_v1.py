@@ -5,7 +5,7 @@ from matplotlib import colors
 
 rows, columns = 200, 160
 rect_height, rect_width = 120, 160  # Height and width of the main area
-path_length, path_width = 80,32 # Path width and length leading to exit
+path_length, path_width = 80,38 # Path width and length leading to exit
 
 exit_start = int(columns // 2 - path_width // 2)  # Calculate start of exit area
 exit_end = int(columns // 2 + path_width // 2)    # Calculate end of exit area
