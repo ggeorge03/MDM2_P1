@@ -48,13 +48,16 @@ def plot_density_heatmap():
 def plot_users_remaining_over_time():
     '''
     Function that plots the number of users remaining
-    in the room at each timestamp.
+    in the room at each timestamp, starting from timestamp = 0.
     '''
     # Find the last timestamp for each user (exit time)
     last_timestamps = df.groupby('userid')['timestamp'].max()
 
-    # Get unique timestamps and sort them
+    # Define the range of timestamps, starting from 0
     unique_timestamps = sorted(df['timestamp'].unique())
+    min_timestamp = 0
+    max_timestamp = unique_timestamps[-1]
+    all_timestamps = range(min_timestamp, max_timestamp + 1)
 
     # Total number of unique users in the dataset
     total_users = last_timestamps.size  # This counts unique users correctly
@@ -69,7 +72,7 @@ def plot_users_remaining_over_time():
     cumulative_left_count = 0
 
     # Calculate the number of people left in the room at each timestamp
-    for timestamp in unique_timestamps:
+    for timestamp in all_timestamps:
         # Count users whose last timestamp (exit time) is at or before the current timestamp
         num_leaving_now = (last_timestamps <= timestamp).sum()
 
@@ -85,10 +88,10 @@ def plot_users_remaining_over_time():
 
     # Plotting
     plt.figure(figsize=(10, 5))
-    plt.plot(unique_timestamps, users_remaining, color='blue', lw=2)
+    plt.plot(all_timestamps, users_remaining, color='blue', lw=2)
     plt.xlabel('Timestamp')
     plt.ylabel('Number of Users Remaining')
-    plt.title('Number of Users Remaining in Room Over Time')
+    plt.title('Number of Users Remaining in Room Over Time (Starting at Timestamp 0)')
     plt.grid()
     plt.show()
     # plt.savefig('users_remaining_over_time.png')
@@ -109,6 +112,7 @@ if __name__ == "__main__":
         plot_density_heatmap()
     elif args.plot == 'left':
         plot_users_remaining_over_time()
+
 
 
 
