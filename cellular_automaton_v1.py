@@ -170,10 +170,10 @@ def run_egress_simulation(speed, exit_influence, floor_field_factor):
     floor_field *= floor_field_factor
 
     # Define a colormap: empty cells = white, people = red , obstacles red
-    cmap = colors.ListedColormap(['white', 'blue', 'gray'])
+    cmap = colors.ListedColormap(['white', 'red', 'black'])
     bounds = [-1, 0, 1, 2]
     norm = colors.BoundaryNorm(bounds, cmap.N)
-    cmap_floor = plt.cm.inferno
+    cmap_floor = plt.cm.coolwarm
 
     # Set up the plot
     fig, ax = plt.subplots()
