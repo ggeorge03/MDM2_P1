@@ -8,7 +8,7 @@ from sklearn.metrics import confusion_matrix
 
 rows, columns = 200, 160
 rect_height, rect_width = 120, 160  # Height and width of the main area
-path_length, path_width = 80,38 # Path width and length leading to exit
+path_length, path_width = 80, 38  # Path width and length leading to exit
 
 # Calculate start of exit area
 exit_start = int(columns // 2 - path_width // 2)
@@ -23,8 +23,6 @@ exit_location = [(0, col) for col in range(exit_start, exit_end)]
 
 move_prob = 1  # Probability of attempting to move
 # exit_influence = 16  # Probability multiplier for moving towards the exit
-
-
 
 
 # Initialize the grid with people randomly placed (1=person, 0=empty)
@@ -87,12 +85,15 @@ def update(frameNum, img1, img2, grid, exit_location, floor_field, exit_influenc
     for i in range(rows):
         for j in range(columns):
             if grid[i, j] == 1:  # If there's a person in the current cell
+                # Apply a speed-based probability check before attempting movement
+                if np.random.rand() > speed:  # The agent doesn't move this frame if random number > speed
+                    continue
                 neighbors = []
                 probs = []
                 # Check all neighboring cells (including diagonals)
                 for ni, nj in [(i-1, j), (i+1, j), (i, j-1), (i, j+1),
                                (i-1, j-1), (i-1, j+1), (i+1, j-1), (i+1, j+1)]:
-                    if 0 <= ni < rows and 0 <= nj < columns and grid[ni, nj] == 0 and new_grid[ni,nj]!=1:
+                    if 0 <= ni < rows and 0 <= nj < columns and grid[ni, nj] == 0 and new_grid[ni, nj] != 1:
                         neighbors.append((ni, nj))
                         dist = distance_to_exit(ni, nj, exit_location)
                         # Closer cells have higher probabilities
@@ -188,7 +189,7 @@ def run_egress_simulation(speed, exit_influence, floor_field_factor):
     # Run the animation (slower animation with interval = 80 ms)
     global ani
     ani = animation.FuncAnimation(fig, update, fargs=(img1, img2, grid, exit_location, floor_field, exit_influence, speed),
-                                  frames=900, interval=80, save_count=50)
+                                  frames=900, interval=160, save_count=50)
     plt.show()
 
     # After the animation stops, plot the remaining people over time
@@ -196,15 +197,14 @@ def run_egress_simulation(speed, exit_influence, floor_field_factor):
     return np.sum(np.array(people_remaining_over_time) > 0)
 
 
-
 def perform_grid_search():
-    speed_range = np.arange(0.5, 2.1, 2.5)
+    speed_range = np.arange(0.2, 1, 0.2)
     exit_influence_range = np.arange(1, 6, 11)
-    floor_field_factor_range = np.arange(1, 11, 6)
+    floor_field_factor_range = np.arange(1, 11, 16)
 
     results = []
 
-    actual_egress_time = 200  # Replace with actual data egress time
+    actual_egress_time = 606.25  # frames from conversion seconds to frames
 
     for speed in speed_range:
         for exit_influence in exit_influence_range:
