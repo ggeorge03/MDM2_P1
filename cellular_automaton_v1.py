@@ -1,21 +1,24 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
-import matplotlib.animation as animation
+from matplotlib import animation
 from matplotlib import colors
+import seaborn as sns
 from sklearn.metrics import confusion_matrix
 
-rows, columns = 200, 160
-rect_height, rect_width = 120, 160  # Height and width of the main area
-path_length, path_width = 80,32 # Path width and length leading to exit
+rows, columns = 50, 20
+rect_height, rect_width = 40, 20  # Height and width of the main area
+path_length, path_width = 10, 4  # Path width and length leading to exit
 
 # Calculate start of exit area
 exit_start = int(columns // 2 - path_width // 2)
 exit_end = int(columns // 2 + path_width // 2)    # Calculate end of exit area
 
 # Create a list of coordinates for the exit cells
-exit_location = [(0, col) for col in range(exit_start, exit_end)]
+# exit_location = [(0, col) for col in range(exit_start, exit_end)]
+# Set the exit location to the boundary where the path begins
+path_start_row = rows - rect_height - path_length  # Start of the path
+exit_location = [(path_start_row, col) for col in range(exit_start, exit_end)]
 
 # recording_start=columns // 2 - 1
 # recording_location = [(path_length, recording_start), (path_length, exit_start + 1),
@@ -24,8 +27,6 @@ exit_location = [(0, col) for col in range(exit_start, exit_end)]
 move_prob = 1  # Probability of attempting to move
 # exit_influence = 16  # Probability multiplier for moving towards the exit
 
-# List to store the number of people remaining at each frame
-people_remaining_over_time = []
 
 # Initialize the grid with people randomly placed (1=person, 0=empty)
 
@@ -51,7 +52,7 @@ def initialize_grid(rows, columns, num_people=176):  # 8000 is max
     # Place people randomly within the free area (not in obstacles)
     # this makes them spawn higher than the pathway they start in a pen of sorts
     free_positions = np.argwhere(
-        (grid == 0) & (np.arange(rows)[:, None] >= 150))
+        (grid == 0) & (np.arange(rows)[:, None] >= 18))
     positions = free_positions[np.random.choice(
         len(free_positions), num_people, replace=False)]
     for pos in positions:
@@ -87,12 +88,15 @@ def update(frameNum, img1, img2, grid, exit_location, floor_field, exit_influenc
     for i in range(rows):
         for j in range(columns):
             if grid[i, j] == 1:  # If there's a person in the current cell
+                # Apply a speed-based probability check before attempting movement
+                if np.random.rand() > speed:  # The agent doesn't move this frame if random number > speed
+                    continue
                 neighbors = []
                 probs = []
                 # Check all neighboring cells (including diagonals)
                 for ni, nj in [(i-1, j), (i+1, j), (i, j-1), (i, j+1),
                                (i-1, j-1), (i-1, j+1), (i+1, j-1), (i+1, j+1)]:
-                    if 0 <= ni < rows and 0 <= nj < columns and grid[ni, nj] == 0:
+                    if 0 <= ni < rows and 0 <= nj < columns and grid[ni, nj] == 0 and new_grid[ni, nj] != 1:
                         neighbors.append((ni, nj))
                         dist = distance_to_exit(ni, nj, exit_location)
                         # Closer cells have higher probabilities
@@ -132,7 +136,7 @@ def update(frameNum, img1, img2, grid, exit_location, floor_field, exit_influenc
     grid[:] = new_grid[:]  # Update the original grid
 
     # Count the number of people left
-    num_people_remaining = np.sum(new_grid[80:, :] == 1)
+    num_people_remaining = np.sum(new_grid[10:, :] == 1)
     people_remaining_over_time.append(num_people_remaining)
     # Stop the simulation if no people are left
     if num_people_remaining == 0:
@@ -163,15 +167,17 @@ def plot_people_remaining():
 
 
 def run_egress_simulation(speed, exit_influence, floor_field_factor):
+    global people_remaining_over_time
+    people_remaining_over_time = []
     grid = initialize_grid(rows, columns)
     floor_field = initialize_floor_field(rows, columns)
     floor_field *= floor_field_factor
 
     # Define a colormap: empty cells = white, people = red , obstacles red
-    cmap = colors.ListedColormap(['white', 'blue', 'gray'])
+    cmap = colors.ListedColormap(['white', 'red', 'black'])
     bounds = [-1, 0, 1, 2]
     norm = colors.BoundaryNorm(bounds, cmap.N)
-    cmap_floor = plt.cm.inferno
+    cmap_floor = plt.cm.coolwarm
 
     # Set up the plot
     fig, ax = plt.subplots()
@@ -186,22 +192,22 @@ def run_egress_simulation(speed, exit_influence, floor_field_factor):
     # Run the animation (slower animation with interval = 80 ms)
     global ani
     ani = animation.FuncAnimation(fig, update, fargs=(img1, img2, grid, exit_location, floor_field, exit_influence, speed),
-                                  frames=900, interval=80, save_count=50)
+                                  frames=900, interval=320, save_count=50)
     plt.show()
 
     # After the animation stops, plot the remaining people over time
+    plot_people_remaining()
     return np.sum(np.array(people_remaining_over_time) > 0)
-    # plot_people_remaining()
 
 
 def perform_grid_search():
-    speed_range = np.arange(0.5, 2.1, 0.5)
-    exit_influence_range = np.arange(1, 6, 1)
-    floor_field_factor_range = np.arange(1, 11, 2)
+    speed_range = np.arange(0.8, 1, 0.2)
+    exit_influence_range = np.arange(1, 6, 11)
+    floor_field_factor_range = np.arange(1, 11, 16)
 
     results = []
 
-    actual_egress_time = 200  # Replace with actual data egress time
+    actual_egress_time = 303  # frames from conversion seconds to frames
 
     for speed in speed_range:
         for exit_influence in exit_influence_range:
