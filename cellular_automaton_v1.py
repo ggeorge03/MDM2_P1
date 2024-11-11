@@ -6,9 +6,21 @@ import matplotlib.animation as animation
 from matplotlib import colors
 from sklearn.metrics import confusion_matrix
 
-rows, columns = 200, 160
-rect_height, rect_width = 120, 160  # Height and width of the main area
-path_length, path_width = 80,38 # Path width and length leading to exit
+max_agents_total = 176  # Total agents to be processed in the simulation
+current_agents = 40     # Initial agents on the grid
+agents_processed = 40   # Initial count includes the starting agents
+
+
+agent_ids = {}      # Dictionary to store agent positions and their IDs
+exited_agents = set()  # Set to track agents that have exited
+
+next_agent_id = 0      # Variable to assign unique IDs
+
+agents_left=0 #to count number of agents having left
+
+rows, columns = 13, 10
+rect_height, rect_width = 8, 10  # Height and width of the main area
+path_length, path_width = 5,2 # Path width and length leading to exit
 
 # Calculate start of exit area
 exit_start = int(columns // 2 - path_width // 2)
@@ -30,33 +42,38 @@ move_prob = 1  # Probability of attempting to move
 # Initialize the grid with people randomly placed (1=person, 0=empty)
 
 
-def initialize_grid(rows, columns, num_people=176):  # 8000 is max
+def initialize_grid(rows, columns, initial_agents=30):  # Start with 40 agents
+    global next_agent_id
+    next_agent_id=0
     grid = np.full((rows, columns), -1)
-    # Define the central rectangle where people can move (adjust as needed)
-
-    # Position of the main area
+    global rect_start_row
     rect_start_row = rows - rect_height
     rect_start_col = (columns - rect_width) // 2
-
-    # Set the main rectangular area to be free space
-    grid[rect_start_row:rect_start_row + rect_height,
-         rect_start_col:rect_start_col + rect_width] = 0
-
-    # Set the pathway leading to the exit to be free space
+    grid[rect_start_row:rect_start_row + rect_height, rect_start_col:rect_start_col + rect_width] = 0
+    global path_start_row, path_start_col
     path_start_row = rect_start_row - path_length
     path_start_col = (columns - path_width) // 2
-    grid[path_start_row:path_start_row + path_length,
-         path_start_col:path_start_col + path_width] = 0
+    grid[path_start_row:path_start_row + path_length, path_start_col:path_start_col + path_width] = 0
 
-    # Place people randomly within the free area (not in obstacles)
-    # this makes them spawn higher than the pathway they start in a pen of sorts
+    # Define free positions within the main area and outside the pathway
     free_positions = np.argwhere(
-        (grid == 0) & (np.arange(rows)[:, None] >= 150))
-    positions = free_positions[np.random.choice(
-        len(free_positions), num_people, replace=False)]
+    (grid == 0) &  # Empty cells only
+    (
+        (np.arange(rows)[:, None] >= rows - 4) &  # Limit to the last 4 rows only
+        (
+            (np.arange(columns) < path_start_col) | (np.arange(columns) >= path_start_col + path_width)  # Exclude pathway columns within these rows
+        )
+    )
+)
+    positions = free_positions[np.random.choice(len(free_positions), initial_agents, replace=False)]
     for pos in positions:
-        grid[pos[0], pos[1]] = 1  # Place people in free cells
+        grid[pos[0], pos[1]] = 1
+        agent_ids[(pos[0], pos[1])] = next_agent_id  # Assign a unique ID to each agent
+        next_agent_id += 1
+
     return grid
+
+
 
 
 def initialize_floor_field(rows, columns, exit_location=exit_location, alpha=0.0001):
@@ -78,68 +95,119 @@ def distance_to_exit(i, j, exit_location):
 # Function to update the grid based on movement probabilities
 
 
-def update(frameNum, img1, img2, grid, exit_location, floor_field, exit_influence, speed):
+# Set a slower spawn rate and specify back rows for spawning
+  # Frames between each spawn attempt
+  # Only spawn agents in the last 3 rows of the main area
+# Increase spawn rate and batch size for each spawn event
+# spawn_rate = 10   # Spawn every 10 frames
+# batch_size = 10   # Number of agents to spawn per batch
+
+def update(frameNum, img1, img2, agent_scatter, grid, exit_location, floor_field, exit_influence, speed):
+    global exited_agents, next_agent_id, agents_processed
     new_grid = grid.copy()
     rows, columns = grid.shape
     floor_field = update_floor_field(floor_field)
 
-    # Iterate over every cell in the grid
+    # Movement logic remains mostly the same
     for i in range(rows):
         for j in range(columns):
-            if grid[i, j] == 1:  # If there's a person in the current cell
+            if grid[i, j] == 1:
+                agent_id = agent_ids.get((i, j))  # Get the agent's unique ID
                 neighbors = []
                 probs = []
-                # Check all neighboring cells (including diagonals)
-                for ni, nj in [(i-1, j), (i+1, j), (i, j-1), (i, j+1),
-                               (i-1, j-1), (i-1, j+1), (i+1, j-1), (i+1, j+1)]:
-                    if 0 <= ni < rows and 0 <= nj < columns and grid[ni, nj] == 0 and new_grid[ni,nj]!=1:
+                
+                # Check all neighboring cells
+                for ni, nj in [(i-1, j), (i+1, j), (i, j-1), (i, j+1), (i-1, j-1), (i-1, j+1), (i+1, j-1), (i+1, j+1)]:
+                    if 0 <= ni < rows and 0 <= nj < columns and grid[ni, nj] == 0 and new_grid[ni, nj] != 1:
                         neighbors.append((ni, nj))
                         dist = distance_to_exit(ni, nj, exit_location)
-                        # Closer cells have higher probabilities
                         base_prob = move_prob / (dist + 1)
                         floor_field_influence = floor_field[ni, nj]
-                        probs.append((base_prob * exit_influence) + floor_field_influence if dist <
-                                     distance_to_exit(i, j, exit_location) else base_prob)
-
-                # Normalize probabilities
-                random_move_prob = 0.1  # optional to add jitterness
+                        probs.append((base_prob * exit_influence) + floor_field_influence if dist < distance_to_exit(i, j, exit_location) else base_prob)
+                
+                # Move the agent based on calculated probabilities
                 if neighbors:
                     probs = np.array(probs)
-                    probs /= probs.sum()  # Normalize to sum to 1
-                    # Move to a neighbor based on probability
-                    if np.random.rand() < random_move_prob:  # Randomly decide if the person tries to move
-                        new_location = neighbors[np.random.choice(
-                            len(neighbors))]
-                    else:
-                        new_location = neighbors[np.random.choice(
-                            len(neighbors), p=probs)]
-                    new_grid[i, j] = 0  # Current cell becomes empty
-                    new_grid[new_location] = 1  # Move person to the new cell
-                    # Increase floor field value at the new location (can alternare between 0 and 1)
-                    floor_field[new_location] += 1
+                    probs /= probs.sum()
+                    new_location = neighbors[np.random.choice(len(neighbors), p=probs)]
+                    new_row, new_col = new_location
 
-    # Set the exit cells to 0 (people leave through any of the 3 exit cells)
+                    # Move agent to the new location
+                    new_grid[i, j] = 0
+                    new_grid[new_location] = 1
+                    floor_field[new_location] += 1
+                    agent_ids[new_location] = agent_id  # Update agent's new position in agent_ids
+                    del agent_ids[(i, j)]  # Remove old position
+
+                    # Check if the agent has exited (i.e., reached the top rows in the pathway area)
+                    if new_row < path_length and agent_id not in exited_agents:
+                        exited_agents.add(agent_id)  # Mark this agent as exited
+                        print(f"Agent {agent_id} exited. Total exits: {len(exited_agents)}")
+
+    # Clear exit cells to ensure they remain empty
     for ex in exit_location:
         new_grid[ex] = 0
 
-    # Update the people grid in img1
-    img1.set_data(new_grid)
+    # Spawn new agents at a slower rate in the back rows
+    spawn_rate = 20   # Spawn every 10 frames
+    batch_size = 10   # Number of agents to spawn per batch
+    if frameNum % spawn_rate == 0 and agents_processed < max_agents_total:
+        free_positions = np.argwhere(
+            (new_grid == 0) &  # Empty cells only
+            (np.arange(rows)[:, None] >= rows - 4) &  # Limit to last 4 rows
+            ((np.arange(columns) < path_start_col) | (np.arange(columns) >= path_start_col + path_width))  # Exclude pathway columns
+        )  
+        
+        # Set the number of agents to spawn based on `batch_size`
+        num_new_agents = min(batch_size, max_agents_total - agents_processed)
+        if len(free_positions) > 0 and num_new_agents > 0:
+            # Filter free positions to last 4 rows only
+            free_positions = free_positions[free_positions[:, 0] >= rect_start_row + rect_height - 4]
 
-    # Update the floor field display in img2 (apply transparency to overlay)
+            # Adjust `num_new_agents` if fewer free positions than needed
+            num_new_agents = min(len(free_positions), num_new_agents)
+
+            # Now sample positions safely
+            if num_new_agents > 0:  # Proceed only if there are positions to sample
+                new_agent_positions = free_positions[np.random.choice(len(free_positions), num_new_agents, replace=False)]
+
+                for pos in new_agent_positions:
+                    new_grid[pos[0], pos[1]] = 1
+                    agent_ids[(pos[0], pos[1])] = next_agent_id  # Assign a unique ID to each new agent
+                    next_agent_id += 1
+                agents_processed += num_new_agents
+                print(f"Spawned {num_new_agents} new agents. Total processed: {agents_processed}")
+
+    # Update scatter plot with new agent positions
+    agent_positions = np.argwhere(new_grid == 1)
+    agent_scatter.set_offsets(agent_positions[:, ::-1])  # Scatter expects [x, y] format
+
+    # Track the number of people remaining on the grid
+    num_people_remaining = max_agents_total - len(exited_agents)
+    print(f"Remaining agents: {num_people_remaining}")  # Debug print statement to observe remaining agents
+    print(f"Agents processed: {agents_processed}")
+    people_remaining_over_time.append(num_people_remaining)
+
+    # Update the grid and floor field visuals
+    img1.set_data(new_grid)
     img2.set_data(floor_field)
     img2.set_clim(vmin=0, vmax=np.percentile(floor_field, 95))
 
-    grid[:] = new_grid[:]  # Update the original grid
-
-    # Count the number of people left
-    num_people_remaining = np.sum(new_grid[80:, :] == 1)
-    people_remaining_over_time.append(num_people_remaining)
-    # Stop the simulation if no people are left
+    # Stop the animation if all agents have exited
     if num_people_remaining == 0:
         plt.title("All people have exited. Close this window to exit.")
         ani.event_source.stop()  # Stop the animation
 
-    return img1, img2  # Ensure both images are updated
+    # Sync the updated grid state back to `grid`
+    grid[:] = new_grid[:]
+
+    # Return updated visuals for FuncAnimation
+    return img1, img2, agent_scatter
+
+
+
+
+
 
 
 def update_floor_field(floor_field, decay_rate=0.001):
@@ -163,37 +231,41 @@ def plot_people_remaining():
 
 
 def run_egress_simulation(speed, exit_influence, floor_field_factor):
-    global people_remaining_over_time
+    global people_remaining_over_time, exited_agents, agents_processed
+    exited_agents=set()
     people_remaining_over_time = []
+    agents_processed=30
     grid = initialize_grid(rows, columns)
     floor_field = initialize_floor_field(rows, columns)
     floor_field *= floor_field_factor
 
-    # Define a colormap: empty cells = white, people = red , obstacles red
-    cmap = colors.ListedColormap(['white', 'red', 'black'])
-    bounds = [-1, 0, 1, 2]
+    # Define a colormap: empty cells = white, people = red, obstacles = black
+    cmap = colors.ListedColormap(['white', 'black'])  
+    bounds = [-1, 0, 2]
     norm = colors.BoundaryNorm(bounds, cmap.N)
-    cmap_floor = plt.cm.coolwarm
+    cmap_floor = plt.cm.plasma
 
     # Set up the plot
     fig, ax = plt.subplots()
-
     img1 = ax.imshow(grid, interpolation='nearest', cmap=cmap, norm=norm)
     img2 = ax.imshow(floor_field, cmap=cmap_floor, alpha=0.6, vmin=0, vmax=1)
 
-    # Set the background color to black
-    # ax.set_facecolor('black')
+    # Initialize the scatter plot for agents (red dots)
+    agent_positions = np.argwhere(grid == 1)  # Initial positions of agents
+    agent_scatter = ax.scatter(agent_positions[:, 1], agent_positions[:, 0], c='red', s=60, marker='o')
+
     ax.invert_yaxis()
 
-    # Run the animation (slower animation with interval = 80 ms)
+    # Run the animation
     global ani
-    ani = animation.FuncAnimation(fig, update, fargs=(img1, img2, grid, exit_location, floor_field, exit_influence, speed),
+    ani = animation.FuncAnimation(fig, update, fargs=(img1, img2, agent_scatter, grid, exit_location, floor_field, exit_influence, speed),
                                   frames=900, interval=80, save_count=50)
     plt.show()
 
     # After the animation stops, plot the remaining people over time
     plot_people_remaining()
     return np.sum(np.array(people_remaining_over_time) > 0)
+
 
 
 
