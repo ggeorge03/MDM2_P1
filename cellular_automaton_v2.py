@@ -33,7 +33,7 @@ exit_location = [(0, col) for col in range(exit_start, exit_end)]
 # recording_location = [(path_length, recording_start), (path_length, exit_start + 1),
 #                  (path_length, exit_start + 2)]
 
-move_prob = 1  # Probability of attempting to move
+# move_prob = 1  # Probability of attempting to move
 # exit_influence = 16  # Probability multiplier for moving towards the exit
 
 
@@ -121,7 +121,7 @@ def update(frameNum, img1, img2, agent_scatter, grid, exit_location, floor_field
                     if 0 <= ni < rows and 0 <= nj < columns and grid[ni, nj] == 0 and new_grid[ni, nj] != 1:
                         neighbors.append((ni, nj))
                         dist = distance_to_exit(ni, nj, exit_location)
-                        base_prob = move_prob / (dist + 1)
+                        base_prob = speed / (dist + 1)
                         floor_field_influence = floor_field[ni, nj]
                         probs.append((base_prob * exit_influence) + floor_field_influence if dist < distance_to_exit(i, j, exit_location) else base_prob)
                 
@@ -149,12 +149,12 @@ def update(frameNum, img1, img2, agent_scatter, grid, exit_location, floor_field
         new_grid[ex] = 0
 
     # Spawn new agents at a slower rate in the back rows
-    spawn_rate = 20   # Spawn every 10 frames
-    batch_size = 10   # Number of agents to spawn per batch
+    spawn_rate = 25   # Spawn every 10 frames
+    batch_size = 20   # Number of agents to spawn per batch
     if frameNum % spawn_rate == 0 and agents_processed < max_agents_total:
         free_positions = np.argwhere(
             (new_grid == 0) &  # Empty cells only
-            (np.arange(rows)[:, None] >= rows - 4) &  # Limit to last 4 rows
+            (np.arange(rows)[:, None] >= rows - 2) &  # Limit to last 4 rows
             ((np.arange(columns) < path_start_col) | (np.arange(columns) >= path_start_col + path_width))  # Exclude pathway columns
         )  
         
