@@ -33,16 +33,16 @@ def plot_trajectories(num_users=25):
 def plot_density_heatmap():
     '''
     Function that plots a heatmap showing the density
-    of footfall in an area.
+    of footfall in an area, flipped vertically.
     '''
     plt.figure(figsize=(8, 6))
-    plt.hist2d(df['x'], df['y'], bins=200, cmap='Reds')
+    plt.hist2d(df['x'], -df['y'], bins=200, cmap='Reds')  # Flip y-axis by using -df['y']
     plt.colorbar(label='Density')
     plt.xlabel('X position')
-    plt.ylabel('Y position')
-    plt.title('Density Heatmap of Movement')
+    plt.ylabel('Y position (flipped)')
+    plt.title('Density Heatmap of Movement (Flipped Vertically)')
     plt.show()
-    # plt.savefig('heatmap.png')
+    # plt.savefig('heatmap_flipped.png')
 
 
 def plot_users_remaining_over_time():
