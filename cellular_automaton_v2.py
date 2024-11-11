@@ -7,8 +7,8 @@ from matplotlib import colors
 from sklearn.metrics import confusion_matrix
 
 max_agents_total = 176  # Total agents to be processed in the simulation
-current_agents = 40     # Initial agents on the grid
-agents_processed = 40   # Initial count includes the starting agents
+current_agents = 30     # Initial agents on the grid
+agents_processed = 30   # Initial count includes the starting agents
 
 
 agent_ids = {}      # Dictionary to store agent positions and their IDs
@@ -266,8 +266,10 @@ def run_egress_simulation(speed, exit_influence, floor_field_factor):
 
 def perform_grid_search():
     speed_range = np.arange(0.8, 1, 0.2)
-    exit_influence_range = np.arange(1, 6, 11)
-    floor_field_factor_range = np.arange(1, 11, 16)
+    exit_influence_range = np.arange(1, 6, 4)
+    # print(exit_influence_range)
+    # exit()
+    floor_field_factor_range = np.arange(1, 11,10 )
 
     results = []
 
