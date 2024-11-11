@@ -1,14 +1,14 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
-import matplotlib.animation as animation
+from matplotlib import animation
 from matplotlib import colors
+import seaborn as sns
 from sklearn.metrics import confusion_matrix
 
-rows, columns = 200, 160
-rect_height, rect_width = 120, 160  # Height and width of the main area
-path_length, path_width = 80, 38  # Path width and length leading to exit
+rows, columns = 100, 80
+rect_height, rect_width = 60, 80  # Height and width of the main area
+path_length, path_width = 40, 19  # Path width and length leading to exit
 
 # Calculate start of exit area
 exit_start = int(columns // 2 - path_width // 2)
@@ -49,7 +49,7 @@ def initialize_grid(rows, columns, num_people=176):  # 8000 is max
     # Place people randomly within the free area (not in obstacles)
     # this makes them spawn higher than the pathway they start in a pen of sorts
     free_positions = np.argwhere(
-        (grid == 0) & (np.arange(rows)[:, None] >= 150))
+        (grid == 0) & (np.arange(rows)[:, None] >= 75))
     positions = free_positions[np.random.choice(
         len(free_positions), num_people, replace=False)]
     for pos in positions:
