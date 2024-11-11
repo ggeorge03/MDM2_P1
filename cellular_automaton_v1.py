@@ -192,7 +192,7 @@ def run_egress_simulation(speed, exit_influence, floor_field_factor):
     # Run the animation (slower animation with interval = 80 ms)
     global ani
     ani = animation.FuncAnimation(fig, update, fargs=(img1, img2, grid, exit_location, floor_field, exit_influence, speed),
-                                  frames=900, interval=160, save_count=50)
+                                  frames=900, interval=320, save_count=50)
     plt.show()
 
     # After the animation stops, plot the remaining people over time
@@ -207,7 +207,7 @@ def perform_grid_search():
 
     results = []
 
-    actual_egress_time = 606.25  # frames from conversion seconds to frames
+    actual_egress_time = 303  # frames from conversion seconds to frames
 
     for speed in speed_range:
         for exit_influence in exit_influence_range:
