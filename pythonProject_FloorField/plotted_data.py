@@ -40,7 +40,7 @@ def plot_density_heatmap():
     plt.colorbar(label='Density')
     plt.xlabel('X position')
     plt.ylabel('Y position (flipped)')
-    plt.title('Density Heatmap of Movement (Flipped Vertically)')
+    plt.title('Density Heatmap of Movement')
     plt.show()
     # plt.savefig('heatmap_flipped.png')
 
