@@ -269,7 +269,7 @@ def run_egress_simulation(speed, exit_influence, floor_field_factor,spawn_rate):
     # Run the animation
     global ani
     ani = animation.FuncAnimation(fig, update, fargs=(img1, img2, agent_scatter, grid, exit_location, floor_field, exit_influence, speed, spawn_rate),
-                                  frames=900, interval=320, save_count=50)
+                                  frames=1000, interval=107.78, save_count=50)
     plt.show()
 
     # After the animation stops, plot the remaining people over time
@@ -281,7 +281,7 @@ def run_egress_simulation(speed, exit_influence, floor_field_factor,spawn_rate):
 
 
 def perform_grid_search():
-    speed_range = np.arange(0.8, 1, 0.2)
+    speed_range = np.arange(0.6, 1, 0.4)
     exit_influence_range = np.arange(1, 6, 4)
     # print(exit_influence_range)
     # exit()
