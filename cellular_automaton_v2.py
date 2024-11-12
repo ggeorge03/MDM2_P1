@@ -102,7 +102,7 @@ def distance_to_exit(i, j, exit_location):
 # spawn_rate = 10   # Spawn every 10 frames
 # batch_size = 10   # Number of agents to spawn per batch
 
-def update(frameNum, img1, img2, agent_scatter, grid, exit_location, floor_field, exit_influence, speed):
+def update(frameNum, img1, img2, agent_scatter, grid, exit_location, floor_field, exit_influence, speed,spawn_rate):
     global exited_agents, next_agent_id, agents_processed
     new_grid = grid.copy()
     rows, columns = grid.shape
@@ -149,7 +149,7 @@ def update(frameNum, img1, img2, agent_scatter, grid, exit_location, floor_field
         new_grid[ex] = 0
 
     # Spawn new agents at a slower rate in the back rows
-    spawn_rate = 25   # Spawn every 10 frames
+    # spawn_rate = 5   # Spawn every 10 frames
     batch_size = 20   # Number of agents to spawn per batch
     if frameNum % spawn_rate == 0 and agents_processed < max_agents_total:
         free_positions = np.argwhere(
@@ -225,7 +225,7 @@ def plot_people_remaining():
 # Main function to run the cellular automaton
 
 
-def run_egress_simulation(speed, exit_influence, floor_field_factor):
+def run_egress_simulation(speed, exit_influence, floor_field_factor,spawn_rate):
     global people_remaining_over_time, exited_agents, agents_processed
     exited_agents=set()
     people_remaining_over_time = []
@@ -253,8 +253,8 @@ def run_egress_simulation(speed, exit_influence, floor_field_factor):
 
     # Run the animation
     global ani
-    ani = animation.FuncAnimation(fig, update, fargs=(img1, img2, agent_scatter, grid, exit_location, floor_field, exit_influence, speed),
-                                  frames=900, interval=80, save_count=50)
+    ani = animation.FuncAnimation(fig, update, fargs=(img1, img2, agent_scatter, grid, exit_location, floor_field, exit_influence, speed, spawn_rate),
+                                  frames=900, interval=320, save_count=50)
     plt.show()
 
     # After the animation stops, plot the remaining people over time
@@ -270,6 +270,7 @@ def perform_grid_search():
     # print(exit_influence_range)
     # exit()
     floor_field_factor_range = np.arange(1, 11,10 )
+    spawn_rate_range=np.arange(5,25,22)
 
     results = []
 
@@ -278,13 +279,15 @@ def perform_grid_search():
     for speed in speed_range:
         for exit_influence in exit_influence_range:
             for floor_field_factor in floor_field_factor_range:
-                simulated_egress_time = run_egress_simulation(
-                    speed, exit_influence, floor_field_factor)
+                for spawn_rate in spawn_rate_range:
+                    simulated_egress_time = run_egress_simulation(
+                        speed, exit_influence, floor_field_factor, spawn_rate)
                 error = abs(simulated_egress_time - actual_egress_time)
                 results.append({
                     'speed': speed,
                     'exit_influence': exit_influence,
                     'floor_field_factor': floor_field_factor,
+                    'spawn_rate': spawn_rate,
                     'error': error
                 })
 
@@ -293,13 +296,15 @@ def perform_grid_search():
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    sc = ax.scatter(results_df['speed'], results_df['exit_influence'], results_df['floor_field_factor'],
-                    c=results_df['error'], cmap='viridis')
+    sc = ax.scatter(
+        results_df['speed'], results_df['exit_influence'], results_df['floor_field_factor'],
+        c=results_df['spawn_rate'], cmap='viridis', s=results_df['error'] * 10  # Size represents error
+    )
     ax.set_xlabel('Speed')
     ax.set_ylabel('Exit Influence')
     ax.set_zlabel('Floor Field Factor')
-    plt.colorbar(sc, label="Error")
-    plt.title("Error in Egress Time vs. Model Parameters")
+    plt.colorbar(sc, label="Spawn Rate")
+    plt.title("Egress Error by Model Parameters and Spawn Rate")
     plt.show()
     plot_3d_with_conf_matrices(results_df)
 
@@ -312,6 +317,7 @@ def plot_3d_with_conf_matrices(results_df):
     slice_speeds = results_df['speed'].sample(1).values
     slice_exit_influences = results_df['exit_influence'].sample(1).values
     slice_floor_fields = results_df['floor_field_factor'].sample(1).values
+    slice_spawn_rates=results_df['spawn_rate'].sample(1).values
 
     for speed in slice_speeds:
         df_slice = results_df[results_df['speed'] == speed]
@@ -334,21 +340,30 @@ def plot_3d_with_conf_matrices(results_df):
             conf_matrix = row['conf_matrix']
             plt_conf_matrix_in_3d(
                 ax, conf_matrix, row['speed'], row['exit_influence'], floor_field_factor, axis='x')
+    
+    for spawn_rate in slice_spawn_rates:
+        df_slice = results_df[results_df['spawn_rate'] == spawn_rate]
+        for _, row in df_slice.iterrows():
+            conf_matrix = row['conf_matrix']
+            plt_conf_matrix_in_3d(
+                ax, conf_matrix, row['speed'], row['exit_influence'], row['floor_field_factor'], spawn_rate, axis='s')
+        
+
 
     # Labels
     ax.set_xlabel('Speed')
     ax.set_ylabel('Exit Influence')
     ax.set_zlabel('Floor Field Factor')
-    plt.title('3D Parameter Space with Confusion Matrix Slices')
+    plt.title('3D Parameter Space with Confusion Matrix Slices by Spawn Rate')
     plt.show()
 
 
-def plt_conf_matrix_in_3d(ax, conf_matrix, x, y, z, axis):
+def plt_conf_matrix_in_3d(ax, conf_matrix, x, y, z, spawn_rate, axis):
     fig, ax2 = plt.subplots()
-    sns.heatmap(conf_matrix, annot=True, fmt="d",
-                cmap="Blues", cbar=False, ax=ax2)
+    sns.heatmap(conf_matrix, annot=True, fmt="d", cmap="Blues", cbar=False, ax=ax2)
     ax2.set_title(
-        f'Confusion Matrix at {axis}={x if axis=="x" else y if axis=="y" else z}')
+        f'Confusion Matrix at {axis}={x if axis=="x" else y if axis=="y" else z}, Spawn Rate={spawn_rate}'
+    )
     plt.close(fig)  # Close the extra plot
 
     # Render the confusion matrix as an image in 3D space
@@ -356,25 +371,41 @@ def plt_conf_matrix_in_3d(ax, conf_matrix, x, y, z, axis):
     rows, cols = conf_matrix.shape
     x_offset, y_offset, z_offset = 0.1, 0.1, 0.1
 
+    # Use `spawn_rate` to adjust the transparency or color intensity
+    spawn_rate_factor = (spawn_rate - results_df['spawn_rate'].min()) / (results_df['spawn_rate'].max() - results_df['spawn_rate'].min())
+    alpha = 0.5 + 0.5 * spawn_rate_factor  # Scale alpha based on spawn_rate
+
+    # Plot the confusion matrix in 3D based on the selected axis
     if axis == 'x':
-        ax.plot_surface([[x - x_offset, x + x_offset], [x - x_offset, x + x_offset]],
-                        [[y - y_offset, y - y_offset],
-                            [y + y_offset, y + y_offset]],
-                        [[z, z], [z, z]],
-                        rstride=1, cstride=1, facecolors=img)
+        ax.plot_surface(
+            [[x - x_offset, x + x_offset], [x - x_offset, x + x_offset]],
+            [[y - y_offset, y - y_offset], [y + y_offset, y + y_offset]],
+            [[z, z], [z, z]],
+            rstride=1, cstride=1, facecolors=img, alpha=alpha
+        )
     elif axis == 'y':
-        ax.plot_surface([[x - x_offset, x + x_offset], [x - x_offset, x + x_offset]],
-                        [[y, y], [y, y]],
-                        [[z - z_offset, z - z_offset],
-                            [z + z_offset, z + z_offset]],
-                        rstride=1, cstride=1, facecolors=img)
+        ax.plot_surface(
+            [[x - x_offset, x + x_offset], [x - x_offset, x + x_offset]],
+            [[y, y], [y, y]],
+            [[z - z_offset, z - z_offset], [z + z_offset, z + z_offset]],
+            rstride=1, cstride=1, facecolors=img, alpha=alpha
+        )
     elif axis == 'z':
-        ax.plot_surface([[x, x], [x, x]],
-                        [[y - y_offset, y + y_offset],
-                            [y - y_offset, y + y_offset]],
-                        [[z - z_offset, z + z_offset],
-                            [z - z_offset, z + z_offset]],
-                        rstride=1, cstride=1, facecolors=img)
+        ax.plot_surface(
+            [[x, x], [x, x]],
+            [[y - y_offset, y + y_offset], [y - y_offset, y + y_offset]],
+            [[z - z_offset, z + z_offset], [z - z_offset, z + z_offset]],
+            rstride=1, cstride=1, facecolors=img, alpha=alpha
+        )
+    elif axis == 's':  # Use `s` for `spawn_rate` to distinguish from other axes
+        ax.plot_surface(
+            [[x - x_offset, x + x_offset], [x - x_offset, x + x_offset]],
+            [[y - y_offset, y - y_offset], [y + y_offset, y + y_offset]],
+            [[z - z_offset * spawn_rate_factor, z + z_offset * spawn_rate_factor],
+             [z - z_offset * spawn_rate_factor, z + z_offset * spawn_rate_factor]],
+            rstride=1, cstride=1, facecolors=img, alpha=alpha
+        )
+
 
 
 # Run the simulation
