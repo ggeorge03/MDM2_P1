@@ -324,14 +324,14 @@ def plot_3d_with_conf_matrices(results_df):
         for _, row in df_slice.iterrows():
             conf_matrix = row['conf_matrix']
             plt_conf_matrix_in_3d(
-                ax, conf_matrix, speed, row['exit_influence'], row['floor_field_factor'], axis='z')
+                ax, conf_matrix, speed, row['exit_influence'], row['floor_field_factor'], axis='z', results_df)
 
     for exit_influence in slice_exit_influences:
         df_slice = results_df[results_df['exit_influence'] == exit_influence]
         for _, row in df_slice.iterrows():
             conf_matrix = row['conf_matrix']
             plt_conf_matrix_in_3d(
-                ax, conf_matrix, row['speed'], exit_influence, row['floor_field_factor'], axis='y')
+                ax, conf_matrix, row['speed'], exit_influence, row['floor_field_factor'], axis='y', results_df)
 
     for floor_field_factor in slice_floor_fields:
         df_slice = results_df[results_df['floor_field_factor']
@@ -339,14 +339,14 @@ def plot_3d_with_conf_matrices(results_df):
         for _, row in df_slice.iterrows():
             conf_matrix = row['conf_matrix']
             plt_conf_matrix_in_3d(
-                ax, conf_matrix, row['speed'], row['exit_influence'], floor_field_factor, axis='x')
+                ax, conf_matrix, row['speed'], row['exit_influence'], floor_field_factor, axis='x', results_df)
     
     for spawn_rate in slice_spawn_rates:
         df_slice = results_df[results_df['spawn_rate'] == spawn_rate]
         for _, row in df_slice.iterrows():
             conf_matrix = row['conf_matrix']
             plt_conf_matrix_in_3d(
-                ax, conf_matrix, row['speed'], row['exit_influence'], row['floor_field_factor'], spawn_rate, axis='s')
+                ax, conf_matrix, row['speed'], row['exit_influence'], row['floor_field_factor'], spawn_rate, axis='s', results_df)
         
 
 
@@ -358,7 +358,7 @@ def plot_3d_with_conf_matrices(results_df):
     plt.show()
 
 
-def plt_conf_matrix_in_3d(ax, conf_matrix, x, y, z, spawn_rate, axis):
+def plt_conf_matrix_in_3d(ax, conf_matrix, x, y, z, spawn_rate, axis, results_df):
     fig, ax2 = plt.subplots()
     sns.heatmap(conf_matrix, annot=True, fmt="d", cmap="Blues", cbar=False, ax=ax2)
     ax2.set_title(
