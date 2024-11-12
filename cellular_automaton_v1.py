@@ -1,10 +1,10 @@
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
+from matplotlib import colors
+from matplotlib import animation
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from matplotlib import animation
-from matplotlib import colors
-import seaborn as sns
-from sklearn.metrics import confusion_matrix
 
 rows, columns = 50, 20
 rect_height, rect_width = 40, 20  # Height and width of the main area
@@ -79,7 +79,7 @@ def distance_to_exit(i, j, exit_location):
 # Function to update the grid based on movement probabilities
 
 
-def update(frameNum, img1, img2, grid, exit_location, floor_field, exit_influence, speed):
+def update(frameNum, img1, img2, grid, exit_location, floor_field, exit_influence, speed, floor_field_factor):
     new_grid = grid.copy()
     rows, columns = grid.shape
     floor_field = update_floor_field(floor_field)
@@ -140,8 +140,10 @@ def update(frameNum, img1, img2, grid, exit_location, floor_field, exit_influenc
     people_remaining_over_time.append(num_people_remaining)
     # Stop the simulation if no people are left
     if num_people_remaining == 0:
-        plt.title("All people have exited. Close this window to exit.")
-        ani.event_source.stop()  # Stop the animation
+        ani.event_source.stop()
+        plt.close()
+        # plt.title("All people have exited. Close this window to exit.")
+        # ani.event_source.stop()  # Stop the animation
 
     return img1, img2  # Ensure both images are updated
 
@@ -154,24 +156,28 @@ def update_floor_field(floor_field, decay_rate=0.001):
 # Function to plot people remaining over time after simulation ends
 
 
-def plot_people_remaining():
-    plt.figure()
-    plt.plot(people_remaining_over_time, label="People remaining")
-    plt.xlabel("Frame")
-    plt.ylabel("People Remaining")
-    plt.title("People Remaining in Room Over Time")
-    plt.legend()
-    plt.show()
+# def plot_people_remaining():
+#     plt.figure()
+#     plt.plot(people_remaining_over_time, label="People remaining")
+#     plt.xlabel("Frame")
+#     plt.ylabel("People Remaining")
+#     plt.title("People Remaining in Room Over Time")
+#     plt.legend()
+#     # plt.show()
 
 # Main function to run the cellular automaton
+
+# def close_figure(event_source, fig):
+#     event_source.stop()  # Stop the animation event source
+#     plt.close(fig)       # Close the figure
 
 
 def run_egress_simulation(speed, exit_influence, floor_field_factor):
     global people_remaining_over_time
     people_remaining_over_time = []
     grid = initialize_grid(rows, columns)
-    floor_field = initialize_floor_field(rows, columns)
-    floor_field *= floor_field_factor
+    floor_field = initialize_floor_field(rows, columns) * floor_field_factor
+    # floor_field *= floor_field_factor
 
     # Define a colormap: empty cells = white, people = red , obstacles red
     cmap = colors.ListedColormap(['white', 'red', 'black'])
@@ -191,19 +197,21 @@ def run_egress_simulation(speed, exit_influence, floor_field_factor):
 
     # Run the animation (slower animation with interval = 80 ms)
     global ani
-    ani = animation.FuncAnimation(fig, update, fargs=(img1, img2, grid, exit_location, floor_field, exit_influence, speed),
-                                  frames=900, interval=320, save_count=50)
+    ani = animation.FuncAnimation(fig, update, fargs=(img1, img2, grid, exit_location, floor_field, exit_influence, speed, floor_field_factor),
+                                  frames=600, interval=320, save_count=50)
+    # ani.event_source.add_callback(lambda: close_figure(ani.event_source, fig))
     plt.show()
+    # plt.close(fig)
 
     # After the animation stops, plot the remaining people over time
-    plot_people_remaining()
+    # plot_people_remaining()
     return np.sum(np.array(people_remaining_over_time) > 0)
 
 
 def perform_grid_search():
-    speed_range = np.arange(0.8, 1, 0.2)
-    exit_influence_range = np.arange(1, 6, 11)
-    floor_field_factor_range = np.arange(1, 11, 16)
+    speed_range = np.arange(0.5, 0.7, 0.05)
+    exit_influence_range = np.arange(1, 4, 1)
+    floor_field_factor_range = np.arange(3, 11, 2)
 
     results = []
 
@@ -219,10 +227,13 @@ def perform_grid_search():
                     'speed': speed,
                     'exit_influence': exit_influence,
                     'floor_field_factor': floor_field_factor,
+                    'simulated_egress_time': simulated_egress_time,
                     'error': error
                 })
 
     results_df = pd.DataFrame(results)
+    pd.set_option('display.max_rows', None)
+    results_df.to_csv('results5.csv', index=False)
     print(results_df)
 
     fig = plt.figure()
@@ -274,7 +285,7 @@ def plot_3d_with_conf_matrices(results_df):
     ax.set_ylabel('Exit Influence')
     ax.set_zlabel('Floor Field Factor')
     plt.title('3D Parameter Space with Confusion Matrix Slices')
-    plt.show()
+    # plt.show()
 
 
 def plt_conf_matrix_in_3d(ax, conf_matrix, x, y, z, axis):
