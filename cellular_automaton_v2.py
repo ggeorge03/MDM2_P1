@@ -5,16 +5,24 @@ import seaborn as sns
 import matplotlib.animation as animation
 from matplotlib import colors
 from sklearn.metrics import confusion_matrix
+import os
+from PIL import Image
+
+
+# Create a folder to save frames if it doesn't exist
+output_folder = "saved_frames"
+os.makedirs(output_folder, exist_ok=True)
 
 max_agents_total = 176  # Total agents to be processed in the simulation
-current_agents = 30     # Initial agents on the grid
-agents_processed = 30   # Initial count includes the starting agents
+current_agents = 40     # Initial agents on the grid
+agents_processed =40    # Initial count includes the starting agents
 
 
 agent_ids = {}      # Dictionary to store agent positions and their IDs
 exited_agents = set()  # Set to track agents that have exited
 
 next_agent_id = 0      # Variable to assign unique IDs
+
 
 agents_left=0 #to count number of agents having left
 
@@ -42,7 +50,7 @@ exit_location = [(0, col) for col in range(exit_start, exit_end)]
 # Initialize the grid with people randomly placed (1=person, 0=empty)
 
 
-def initialize_grid(rows, columns, initial_agents=30):  # Start with 40 agents
+def initialize_grid(rows, columns, initial_agents=40):  # Start with 40 agents
     global next_agent_id
     next_agent_id=0
     grid = np.full((rows, columns), -1)
@@ -57,14 +65,9 @@ def initialize_grid(rows, columns, initial_agents=30):  # Start with 40 agents
 
     # Define free positions within the main area and outside the pathway
     free_positions = np.argwhere(
-    (grid == 0) &  # Empty cells only
-    (
-        (np.arange(rows)[:, None] >= rows - 4) &  # Limit to the last 4 rows only
-        (
-            (np.arange(columns) < path_start_col) | (np.arange(columns) >= path_start_col + path_width)  # Exclude pathway columns within these rows
-        )
+        (grid == 0) &  # Empty cells only
+        (np.arange(rows)[:, None] >= rows - 5)  # Strictly the last 4 rows
     )
-)
     positions = free_positions[np.random.choice(len(free_positions), initial_agents, replace=False)]
     for pos in positions:
         grid[pos[0], pos[1]] = 1
@@ -111,6 +114,7 @@ def update(frameNum, img1, img2, agent_scatter, grid, exit_location, floor_field
     # Movement logic remains mostly the same
     for i in range(rows):
         for j in range(columns):
+            print(f"FrameNum: {frameNum}")
             if grid[i, j] == 1:
                 agent_id = agent_ids.get((i, j))  # Get the agent's unique ID
                 neighbors = []
@@ -154,7 +158,7 @@ def update(frameNum, img1, img2, agent_scatter, grid, exit_location, floor_field
     if frameNum % spawn_rate == 0 and agents_processed < max_agents_total:
         free_positions = np.argwhere(
             (new_grid == 0) &  # Empty cells only
-            (np.arange(rows)[:, None] >= rows - 2) &  # Limit to last 4 rows
+            (np.arange(rows)[:, None] >= rows - 2) &  # Limit to last  rows
             ((np.arange(columns) < path_start_col) | (np.arange(columns) >= path_start_col + path_width))  # Exclude pathway columns
         )  
         
@@ -201,6 +205,17 @@ def update(frameNum, img1, img2, agent_scatter, grid, exit_location, floor_field
     # Sync the updated grid state back to `grid`
     grid[:] = new_grid[:]
 
+    # Save the first, middle, and last frames
+    total_frames = 200  # Set the total number of frames here or dynamically
+
+    # Save the first, middle, and last frames
+    if frameNum == 0:
+        plt.savefig(os.path.join(output_folder, "frame_first.png"))
+    elif num_people_remaining==176/2:  # Within 5 frames of the middle
+        plt.savefig(os.path.join(output_folder, "frame_middle.png"))
+    elif num_people_remaining==0:  # Within 5 frames of the last
+        plt.savefig(os.path.join(output_folder, "frame_last.png"))
+
     # Return updated visuals for FuncAnimation
     return img1, img2, agent_scatter
 
@@ -229,7 +244,7 @@ def run_egress_simulation(speed, exit_influence, floor_field_factor,spawn_rate):
     global people_remaining_over_time, exited_agents, agents_processed
     exited_agents=set()
     people_remaining_over_time = []
-    agents_processed=30
+    agents_processed=40
     grid = initialize_grid(rows, columns)
     floor_field = initialize_floor_field(rows, columns)
     floor_field *= floor_field_factor
@@ -258,6 +273,7 @@ def run_egress_simulation(speed, exit_influence, floor_field_factor,spawn_rate):
     plt.show()
 
     # After the animation stops, plot the remaining people over time
+    display_saved_frames(output_folder="saved_frames")
     plot_people_remaining()
     return np.sum(np.array(people_remaining_over_time) > 0)
 
@@ -270,7 +286,7 @@ def perform_grid_search():
     # print(exit_influence_range)
     # exit()
     floor_field_factor_range = np.arange(1, 11,10 )
-    spawn_rate_range=np.arange(5,25,22)
+    spawn_rate_range=np.arange(10,25,22)
 
     results = []
 
@@ -291,6 +307,7 @@ def perform_grid_search():
                     'error': error
                 })
 
+    global results_df
     results_df = pd.DataFrame(results)
     print(results_df)
 
@@ -324,14 +341,14 @@ def plot_3d_with_conf_matrices(results_df):
         for _, row in df_slice.iterrows():
             conf_matrix = row['conf_matrix']
             plt_conf_matrix_in_3d(
-                ax, conf_matrix, speed, row['exit_influence'], row['floor_field_factor'], axis='z', results_df)
+                ax, conf_matrix, speed, row['exit_influence'], row['floor_field_factor'], axis='z')
 
     for exit_influence in slice_exit_influences:
         df_slice = results_df[results_df['exit_influence'] == exit_influence]
         for _, row in df_slice.iterrows():
             conf_matrix = row['conf_matrix']
             plt_conf_matrix_in_3d(
-                ax, conf_matrix, row['speed'], exit_influence, row['floor_field_factor'], axis='y', results_df)
+                ax, conf_matrix, row['speed'], exit_influence, row['floor_field_factor'], axis='y')
 
     for floor_field_factor in slice_floor_fields:
         df_slice = results_df[results_df['floor_field_factor']
@@ -339,14 +356,14 @@ def plot_3d_with_conf_matrices(results_df):
         for _, row in df_slice.iterrows():
             conf_matrix = row['conf_matrix']
             plt_conf_matrix_in_3d(
-                ax, conf_matrix, row['speed'], row['exit_influence'], floor_field_factor, axis='x', results_df)
+                ax, conf_matrix, row['speed'], row['exit_influence'], floor_field_factor, axis='x')
     
     for spawn_rate in slice_spawn_rates:
         df_slice = results_df[results_df['spawn_rate'] == spawn_rate]
         for _, row in df_slice.iterrows():
             conf_matrix = row['conf_matrix']
             plt_conf_matrix_in_3d(
-                ax, conf_matrix, row['speed'], row['exit_influence'], row['floor_field_factor'], spawn_rate, axis='s', results_df)
+                ax, conf_matrix, row['speed'], row['exit_influence'], row['floor_field_factor'], spawn_rate, axis='s')
         
 
 
@@ -358,7 +375,7 @@ def plot_3d_with_conf_matrices(results_df):
     plt.show()
 
 
-def plt_conf_matrix_in_3d(ax, conf_matrix, x, y, z, spawn_rate, axis, results_df):
+def plt_conf_matrix_in_3d(ax, conf_matrix, x, y, z, spawn_rate, axis):
     fig, ax2 = plt.subplots()
     sns.heatmap(conf_matrix, annot=True, fmt="d", cmap="Blues", cbar=False, ax=ax2)
     ax2.set_title(
@@ -406,8 +423,33 @@ def plt_conf_matrix_in_3d(ax, conf_matrix, x, y, z, spawn_rate, axis, results_df
             rstride=1, cstride=1, facecolors=img, alpha=alpha
         )
 
+def display_saved_frames(output_folder="saved_frames"):
+    # Filenames for the frames
+    frame_files = ["frame_first.png", "frame_middle.png", "frame_last.png"]
+    # Titles for each frame
+    titles = ["Start", "Middle", "End"]
 
+    # Initialize the figure with three subplots
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+
+    # Loop through each frame file and title
+    for ax, frame_file, title in zip(axes, frame_files, titles):
+        # Load the image
+        img_path = os.path.join(output_folder, frame_file)
+        if os.path.exists(img_path):
+            img = Image.open(img_path)
+            # Display the image in the subplot
+            ax.imshow(img)
+            ax.set_title(title)
+            ax.axis('off')  # Hide axis for a cleaner look
+        else:
+            print(f"Warning: {img_path} does not exist.")
+    
+    # Adjust layout for spacing
+    plt.tight_layout()
+    plt.show()
 
 # Run the simulation
 # run_egress_simulation()
 perform_grid_search()
+
