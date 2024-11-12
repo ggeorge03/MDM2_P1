@@ -310,7 +310,8 @@ def perform_grid_search():
     global results_df
     results_df = pd.DataFrame(results)
     print(results_df)
-
+    pd.set_option('display_max_rows',None)
+    results_df.to_csv('results.csv',index=None)
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     sc = ax.scatter(
